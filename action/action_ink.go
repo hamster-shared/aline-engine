@@ -3,7 +3,6 @@ package action
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/hamster-shared/aline-engine/consts"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
@@ -72,15 +71,11 @@ func (a *InkAction) Hook() (*model.ActionResult, error) {
 			break
 		}
 	}
-	var command string
+	//var command string
 	if fileName != "" {
 		contractPath := filepath.Join(targetPath, fileName)
-		if a.network == "Local" {
-			command = fmt.Sprintf("deploy-polkadot --url %s --metadata %s", consts.InkUrlMap[a.network], contractPath)
-		} else {
-			command = fmt.Sprintf("deploy-polkadot --url %s --mnemonic %s --metadata %s", consts.InkUrlMap[a.network], a.mnemonic, contractPath)
-		}
-		out, err := a.ExecuteStringCommand(command, workdir)
+		commands := []string{"deploy-polkadot", "--url", consts.InkUrlMap[a.network], "--mnemonic", a.mnemonic, "--metadata", contractPath}
+		out, err := a.ExecuteCommand(commands, workdir)
 		a.output.WriteLine(out)
 		if err != nil {
 			return nil, err
