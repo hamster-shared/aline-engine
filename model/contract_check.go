@@ -19,7 +19,7 @@ func NewContractCheckResult[T ResultDetailType](name string, result string, tool
 }
 
 type ResultDetailType interface {
-	string | []ContractStyleGuideValidationsReportDetails | []ContractMethodsPropertiesReportDetails | json.RawMessage
+	string | []ContractStyleGuideValidationsReportDetails | []ContractMethodsPropertiesReportDetails | json.RawMessage | []EslintCheckReportDetails
 }
 
 type ContractCheckResultDetails[T ResultDetailType] struct {
@@ -76,4 +76,13 @@ func NewContractMethodsPropertiesReportDetails(contract, category, function, vis
 		Returns:    returns,
 		Modifiers:  modifiers,
 	}
+}
+
+type EslintCheckReportDetails struct {
+	Line         string `json:"line"`
+	Column       string `json:"column"`
+	Level        string `json:"level"`
+	OriginalText string `json:"originalText"`
+	Note         string `json:"note"`
+	Tool         string `json:"tool"`
 }

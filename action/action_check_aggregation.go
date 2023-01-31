@@ -62,7 +62,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			return nil, err
 		}
 	}
-	var contractCheckResultList []model.ContractCheckResult[json.RawMessage]
+	var checkResultList []model.ContractCheckResult[json.RawMessage]
 	//var styleGuideValidationsReportList model.ContractCheckResult[[]model.ContractStyleGuideValidationsReportDetails]
 	//var securityAnalysisReportList model.ContractCheckResult[[]model.ContractStyleGuideValidationsReportDetails]
 	for _, path := range absPathList {
@@ -94,7 +94,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 				contractCheckResultDetailsList = append(contractCheckResultDetailsList, contractCheckResultDetails)
 			}
 			methodsPropertiesReportRaw.Context = contractCheckResultDetailsList
-			contractCheckResultList = append(contractCheckResultList, methodsPropertiesReportRaw)
+			checkResultList = append(checkResultList, methodsPropertiesReportRaw)
 		}
 		if strings.Contains(result, consts.ContractStyleGuideValidationsReport.Name) {
 			var styleGuideValidationsReport model.ContractCheckResult[[]model.ContractStyleGuideValidationsReportDetails]
@@ -119,7 +119,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 				contractCheckResultDetailsList = append(contractCheckResultDetailsList, contractCheckResultDetails)
 			}
 			styleGuideValidationsReportRaw.Context = contractCheckResultDetailsList
-			contractCheckResultList = append(contractCheckResultList, styleGuideValidationsReportRaw)
+			checkResultList = append(checkResultList, styleGuideValidationsReportRaw)
 		}
 		if strings.Contains(result, consts.ContractSecurityAnalysisReport.Name) {
 			var securityAnalysisReport model.ContractCheckResult[[]model.ContractStyleGuideValidationsReportDetails]
@@ -144,7 +144,32 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 				contractCheckResultDetailsList = append(contractCheckResultDetailsList, contractCheckResultDetails)
 			}
 			securityAnalysisReportRaw.Context = contractCheckResultDetailsList
-			contractCheckResultList = append(contractCheckResultList, securityAnalysisReportRaw)
+			checkResultList = append(checkResultList, securityAnalysisReportRaw)
+		}
+		if strings.Contains(result, consts.FrontEndCheckReport.Name) {
+			var eslintCheckReportReport model.ContractCheckResult[[]model.EslintCheckReportDetails]
+			err := json.Unmarshal(file, &eslintCheckReportReport)
+			if err != nil {
+				continue
+			}
+			var eslintCheckReportReportRaw model.ContractCheckResult[json.RawMessage]
+			eslintCheckReportReportRaw.Tool = eslintCheckReportReport.Tool
+			eslintCheckReportReportRaw.Name = eslintCheckReportReport.Name
+			eslintCheckReportReportRaw.Result = eslintCheckReportReport.Result
+			var eslintCheckResultDetailsList []model.ContractCheckResultDetails[json.RawMessage]
+			for _, report := range eslintCheckReportReport.Context {
+				var contractCheckResultDetails model.ContractCheckResultDetails[json.RawMessage]
+				contractCheckResultDetails.Name = report.Name
+				contractCheckResultDetails.Issue = report.Issue
+				marshal, err := json.Marshal(report.Message)
+				if err != nil {
+					continue
+				}
+				contractCheckResultDetails.Message = marshal
+				eslintCheckResultDetailsList = append(eslintCheckResultDetailsList, contractCheckResultDetails)
+			}
+			eslintCheckReportReportRaw.Context = eslintCheckResultDetailsList
+			checkResultList = append(checkResultList, eslintCheckReportReportRaw)
 		}
 	}
 	a.path = path2.Join(destDir, consts.CheckAggregationResult)
@@ -152,7 +177,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	marshal, err := json.Marshal(contractCheckResultList)
+	marshal, err := json.Marshal(checkResultList)
 	if err != nil {
 		return nil, err
 	}
