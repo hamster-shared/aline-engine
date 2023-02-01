@@ -33,8 +33,7 @@ func NewEslintAction(step model.Step, ctx context.Context, output *output.Output
 }
 
 func (a *EslintAction) Pre() error {
-	eslintJsFile := ".eslintrc.js"
-	eslintJsonFile := ".eslintrc.json"
+	eslintFile := ".eslintrc.*"
 	packageFile := "package.json"
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 	workdir, ok := stack["workdir"].(string)
@@ -45,15 +44,19 @@ func (a *EslintAction) Pre() error {
 	eslintFileFlag := false
 	packageFileFlag := false
 	for _, file := range files {
-		if file.Name() == eslintJsFile || file.Name() == eslintJsonFile {
-			eslintFileFlag = true
+		matched, err := path2.Match(eslintFile, file.Name())
+		if err != nil {
+			return errors.New(".eslintrc.* not exist")
+		}
+		if matched {
+			eslintFileFlag = matched
 		}
 		if file.Name() == packageFile {
 			packageFileFlag = true
 		}
 	}
 	if !eslintFileFlag {
-		return errors.New(".eslintrc.js/.eslintrc.json not exist")
+		return errors.New(".eslintrc.* not exist")
 	}
 
 	if !packageFileFlag {
