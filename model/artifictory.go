@@ -17,8 +17,14 @@ type Report struct {
 	Type int    `json:"type"`
 }
 
+type DeployInfo struct {
+	Cid string `json:"cid"`
+	Url string `json:"url"`
+}
+
 type ActionResult struct {
 	CodeInfo     string
 	Artifactorys []Artifactory `json:"artifactorys"`
 	Reports      []Report      `json:"reports"`
+	Deploys      []DeployInfo  `json:"deploys"`
 }

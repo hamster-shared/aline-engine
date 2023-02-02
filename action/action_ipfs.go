@@ -1,34 +1,39 @@
 package action
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/consts"
-	model2 "github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
 	"github.com/hamster-shared/aline-engine/utils"
+	shell "github.com/ipfs/go-ipfs-api"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
-	path2 "path"
+	"path/filepath"
 )
 
 // IpfsAction Upload files/directories to ipfs
 type IpfsAction struct {
-	path   string
-	output *output.Output
-	ctx    context.Context
+	path    string
+	api     string
+	gateway string
+	artiUrl string
+	baseDir string
+	output  *output.Output
+	ctx     context.Context
 }
 
-func NewIpfsAction(step model2.Step, ctx context.Context, output *output.Output) *IpfsAction {
+func NewIpfsAction(step model.Step, ctx context.Context, output *output.Output) *IpfsAction {
 	return &IpfsAction{
-		path:   step.With["path"],
-		ctx:    ctx,
-		output: output,
+		path:    step.With["path"],
+		artiUrl: step.With["arti_url"],
+		gateway: step.With["gateway"],
+		api:     step.With["api"],
+		baseDir: step.With["base_dir"],
+		ctx:     ctx,
+		output:  output,
 	}
 }
 
@@ -36,7 +41,7 @@ func (a *IpfsAction) Pre() error {
 	return nil
 }
 
-func (a *IpfsAction) Hook() (*model2.ActionResult, error) {
+func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 
@@ -45,80 +50,54 @@ func (a *IpfsAction) Hook() (*model2.ActionResult, error) {
 		return nil, errors.New("get workdir error")
 	}
 
-	path := path2.Join(workdir, a.path)
-	fmt.Println(path)
-	fi, err := os.Stat(path)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("get path fail, err is  %s", err.Error()))
-	}
-	isDir := fi.IsDir()
-	var dstPath string
-	if isDir {
-		dstPath = path + ".car"
-		_, err := os.Stat(dstPath)
-		if err == nil {
-			os.Remove(dstPath)
-		}
-		car, err := utils.CreateCar(a.ctx, path, dstPath, consts.CarVersion)
+	fmt.Println(workdir)
+
+	if a.artiUrl != "" {
+		a.output.WriteLine("downloading artifacts")
+		res, err := http.Get(a.artiUrl)
+
 		if err != nil {
-			return nil, errors.New("dir to car fail")
+			panic(err)
 		}
-		fmt.Println(fmt.Sprintf("%s 的ipfs hash 是 %s", path, car))
-	} else {
-		dstPath = path
+		filename := filepath.Base(a.artiUrl)
+
+		fmt.Println(filename)
+		fmt.Println(res.Status)
+		downloadFile := filepath.Join(workdir, filename)
+		f, err := os.Create(filepath.Join(workdir, filename))
+		if err != nil {
+			panic(err)
+		}
+		io.Copy(f, res.Body)
+		defer res.Body.Close()
+		a.output.WriteLine("download artifacts success")
+
+		if filepath.Ext(downloadFile) == ".zip" {
+			err := utils.DeCompressZip(downloadFile, workdir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		_ = os.Remove(downloadFile)
+
+		a.path = filepath.Join(workdir)
 	}
 
-	_, file := path2.Split(dstPath)
-	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	formFile, err := writer.CreateFormFile("file", file)
-	if err != nil {
+	if _, err := os.Stat(a.path); err != nil {
+		a.output.WriteLine("path or arti_url is empty")
 		return nil, err
 	}
-	open, err := os.Open(dstPath)
+
+	sh := shell.NewShell(a.api)
+	//cid, err := sh.Add(strings.NewReader("hello world!"))
+	cid, err := sh.AddDir(filepath.Join(a.path, a.baseDir))
 	if err != nil {
-		return nil, errors.New("dstPath open fail")
+		fmt.Fprintf(os.Stderr, "error: %s", err)
+		os.Exit(1)
 	}
-	_, err = io.Copy(formFile, open)
-	if err != nil {
-		return nil, err
-	}
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-	client := http.Client{}
-	req, err := http.NewRequest("POST", consts.IpfsUploadUrl, body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", writer.FormDataContentType())
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	bodyText, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("收到的req是  %s\n", bodyText)
-	var ipfsGatewayCloudReq IpfsGatewayCloudReq
-	err = json.Unmarshal(bodyText, &ipfsGatewayCloudReq)
-	if err != nil {
-		return nil, errors.New("req json unmarshal fail")
-	}
-	actionResult := model2.ActionResult{
-		Artifactorys: []model2.Artifactory{
-			{
-				Name: a.path,
-				Url:  ipfsGatewayCloudReq.Url,
-			},
-		},
-		Reports: nil,
-	}
-	fmt.Println(actionResult)
-	return &actionResult, nil
+	fmt.Println(cid)
+	fmt.Println(fmt.Sprintf("%s/ipfs/%s", a.gateway, cid))
+	return nil, nil
 }
 
 func (a *IpfsAction) Post() error {

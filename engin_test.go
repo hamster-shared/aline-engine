@@ -3,8 +3,10 @@ package engine
 import (
 	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
@@ -15,37 +17,10 @@ func TestEngine(t *testing.T) {
 
 	engine := NewEngine()
 
-	jobName := "frontend-check"
-	yaml := `version: 1.0
-name: frontend-check
-stages:
-  Initialization:
-    steps:
-      - name: git-clone
-        uses: git-checkout
-        with:
-          url: https://github.com/abing258/frontend-Template.git
-          branch: master
-
-  Check FrontEnd :
-    needs:
-      - Initialization
-    steps:
-      - name: frontend-install
-        run: |
-          npm install
-      - name: frontend-check
-        uses: frontend-check
-        with:
-          path:
-
-  Output Results:
-    needs:
-      - Check FrontEnd
-    steps:
-      - name: check-aggregation
-        uses: check-aggregation
-`
+	jobName := "frontend"
+	data, _ := os.ReadFile("test_ipfs.yml")
+	yaml := string(data)
+	fmt.Println(yaml)
 	err := engine.CreateJob(jobName, yaml)
 	assert.NoError(t, err)
 
@@ -59,6 +34,12 @@ stages:
 	assert.NoError(t, err)
 	fmt.Println(detail.Id)
 
-	time.Sleep(30 * time.Second)
+	for {
+		time.Sleep(1 * time.Second)
+		jobDetail := engine.GetJobHistory(jobName, detail.Id)
+		if jobDetail.Status > model.STATUS_RUNNING {
+			break
+		}
+	}
 
 }
