@@ -10,6 +10,7 @@ import (
 	shell "github.com/ipfs/go-ipfs-api"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 )
@@ -52,25 +53,56 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 
 	fmt.Println(workdir)
 
+	var downloadFile string
+
 	if a.artiUrl != "" {
+		URL, err := url.Parse(a.artiUrl)
+		if err != nil {
+			a.output.WriteLine("url is invalid")
+			return nil, err
+		}
+
 		a.output.WriteLine("downloading artifacts")
-		res, err := http.Get(a.artiUrl)
 
-		if err != nil {
-			panic(err)
-		}
-		filename := filepath.Base(a.artiUrl)
+		if URL.Scheme == "http" || URL.Scheme == "https" {
 
-		fmt.Println(filename)
-		fmt.Println(res.Status)
-		downloadFile := filepath.Join(workdir, filename)
-		f, err := os.Create(filepath.Join(workdir, filename))
-		if err != nil {
-			panic(err)
+			res, err := http.Get(a.artiUrl)
+
+			if err != nil {
+				a.output.WriteLine("download " + URL.String() + " failed")
+				return nil, err
+			}
+			filename := filepath.Base(a.artiUrl)
+			downloadFile = filepath.Join(workdir, filename)
+			f, err := os.Create(downloadFile)
+			if err != nil {
+				a.output.WriteLine("copy file fail")
+				return nil, err
+			}
+			io.Copy(f, res.Body)
+			defer res.Body.Close()
+			defer f.Close()
+			a.output.WriteLine("download artifacts success")
+
+		} else if URL.Scheme == "file" {
+			filename := filepath.Base(a.artiUrl)
+			downloadFile = filepath.Join(workdir, filename)
+			f, err := os.Create(downloadFile)
+			defer f.Close()
+			if err != nil {
+				a.output.WriteLine("copy file fail")
+				return nil, err
+			}
+			src, err := os.Open(URL.RequestURI())
+			defer src.Close()
+			if err != nil {
+				a.output.WriteLine("copy file fail")
+				return nil, err
+			}
+
+			io.Copy(f, src)
+			a.output.WriteLine("download artifacts success")
 		}
-		io.Copy(f, res.Body)
-		defer res.Body.Close()
-		a.output.WriteLine("download artifacts success")
 
 		if filepath.Ext(downloadFile) == ".zip" {
 			err := utils.DeCompressZip(downloadFile, workdir)

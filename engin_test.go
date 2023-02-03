@@ -6,6 +6,7 @@ import (
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ func TestEngine(t *testing.T) {
 	engine := NewEngine()
 
 	jobName := "frontend"
-	data, _ := os.ReadFile("test_ipfs.yml")
+	data, _ := os.ReadFile("test_ipfs_file.yml")
 	yaml := string(data)
 	fmt.Println(yaml)
 	err := engine.CreateJob(jobName, yaml)
@@ -41,5 +42,13 @@ func TestEngine(t *testing.T) {
 			break
 		}
 	}
+
+}
+
+func TestURL(t *testing.T) {
+
+	URL, err := url.Parse("file:///tmp/test/dist.zip")
+	assert.NoError(t, err)
+	fmt.Println(URL.RequestURI())
 
 }
