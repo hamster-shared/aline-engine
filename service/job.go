@@ -24,6 +24,9 @@ type IJobService interface {
 	//SaveJob 保存 Job
 	SaveJob(name string, yaml string) error
 
+	// SaveJobParams  save job params
+	SaveJobParams(name string, params map[string]string) error
+
 	// GetJob 获取 Job
 	GetJob(name string) string
 
@@ -101,6 +104,16 @@ func (svc *JobService) SaveJob(name string, yaml string) error {
 		return err
 	}
 	return nil
+}
+
+func (svc *JobService) SaveJobParams(name string, params map[string]string) error {
+	job := svc.GetJobObject(name)
+	job.Parameter = params
+	content, err := yaml.Marshal(job)
+	if err != nil {
+		return err
+	}
+	return svc.SaveJob(job.Name, string(content))
 }
 
 // GetJob get job

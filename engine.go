@@ -50,6 +50,10 @@ func (e *Engine) CreateJob(name string, yaml string) error {
 	return e.jobService.SaveJob(name, yaml)
 }
 
+func (e *Engine) SaveJobParams(name string, params map[string]string) error {
+	return e.jobService.SaveJobParams(name, params)
+}
+
 func (e *Engine) DeleteJob(name string) error {
 	return e.jobService.DeleteJob(name)
 }

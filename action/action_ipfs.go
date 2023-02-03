@@ -39,6 +39,10 @@ func NewIpfsAction(step model.Step, ctx context.Context, output *output.Output) 
 }
 
 func (a *IpfsAction) Pre() error {
+	stack := a.ctx.Value(STACK).(map[string]interface{})
+	params := stack["parameter"].(map[string]string)
+	a.artiUrl = utils.ReplaceWithParam(a.artiUrl, params)
+	a.baseDir = utils.ReplaceWithParam(a.baseDir, params)
 	return nil
 }
 
