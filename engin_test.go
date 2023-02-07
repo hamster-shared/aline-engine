@@ -18,12 +18,18 @@ func TestEngine(t *testing.T) {
 
 	engine := NewEngine()
 
-	jobName := "frontend"
+	jobName := "2e70fb35-f8b3-403e-ae0f-a31d5a945c05_75"
 	data, _ := os.ReadFile("test_ipfs_file.yml")
 	yaml := string(data)
 	fmt.Println(yaml)
 	err := engine.CreateJob(jobName, yaml)
 	assert.NoError(t, err)
+
+	params := make(map[string]string)
+	params["baseDir"] = "dist"
+	params["ArtifactUrl"] = "file:///Users/mohaijiang/pipelines/jobs/2e70fb35-f8b3-403e-ae0f-a31d5a945c05_74/artifactory/2/frontend.zip"
+
+	engine.SaveJobParams("2e70fb35-f8b3-403e-ae0f-a31d5a945c05_75", params)
 
 	job := engine.GetJob(jobName)
 	_, err = job.StageSort()

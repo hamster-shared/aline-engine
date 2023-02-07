@@ -83,28 +83,48 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 				a.output.WriteLine("copy file fail")
 				return nil, err
 			}
-			io.Copy(f, res.Body)
-			defer res.Body.Close()
-			defer f.Close()
+			_, _ = io.Copy(f, res.Body)
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+
+				}
+			}(res.Body)
+			defer func(f *os.File) {
+				err := f.Close()
+				if err != nil {
+
+				}
+			}(f)
 			a.output.WriteLine("download artifacts success")
 
 		} else if URL.Scheme == "file" {
 			filename := filepath.Base(a.artiUrl)
 			downloadFile = filepath.Join(workdir, filename)
 			f, err := os.Create(downloadFile)
-			defer f.Close()
+			defer func(f *os.File) {
+				err := f.Close()
+				if err != nil {
+
+				}
+			}(f)
 			if err != nil {
 				a.output.WriteLine("copy file fail")
 				return nil, err
 			}
 			src, err := os.Open(URL.RequestURI())
-			defer src.Close()
+			defer func(src *os.File) {
+				err := src.Close()
+				if err != nil {
+
+				}
+			}(src)
 			if err != nil {
 				a.output.WriteLine("copy file fail")
 				return nil, err
 			}
 
-			io.Copy(f, src)
+			_, _ = io.Copy(f, src)
 			a.output.WriteLine("download artifacts success")
 		}
 
@@ -128,12 +148,18 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 	//cid, err := sh.Add(strings.NewReader("hello world!"))
 	cid, err := sh.AddDir(filepath.Join(a.path, a.baseDir))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s", err)
-		os.Exit(1)
+		a.output.WriteLine("error:" + err.Error())
+		return nil, err
 	}
-	fmt.Println(cid)
-	fmt.Println(fmt.Sprintf("%s/ipfs/%s", a.gateway, cid))
-	return nil, nil
+
+	deployInfo := model.DeployInfo{
+		Cid: cid,
+		Url: fmt.Sprintf("%s/ipfs/%s", a.gateway, cid),
+	}
+
+	actionResult := &model.ActionResult{}
+	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
+	return actionResult, nil
 }
 
 func (a *IpfsAction) Post() error {
