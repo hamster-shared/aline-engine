@@ -71,7 +71,8 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 	// 2. 初始化 执行器的上下文
 
 	env := make([]string, 0)
-	env = append(env, "NAME="+job.Name)
+	env = append(env, "PIPELINE_NAME="+job.Name)
+	env = append(env, "PIPELINE_ID="+strconv.Itoa(id))
 
 	homeDir, _ := os.UserHomeDir()
 
