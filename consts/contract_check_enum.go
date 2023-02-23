@@ -18,6 +18,14 @@ var (
 	ContractStyleGuideValidationsReport = contractCheckResult("Contract Style Guide validations Report", "Solhint")
 	ContractSecurityAnalysisReport      = contractCheckResult("Contract Security Analysis Report", "mythril")
 	FrontEndCheckReport                 = contractCheckResult("Static analysis report", "ESLint")
+	EthGasCheckReport                   = contractCheckResult("Gas Usage Report", "eth-gas-reporter")
+)
+
+var (
+	UnitTestResult         = "Unit Test Result"
+	IssuesInfo             = "Issues  Info"
+	GasUsageForMethods     = "Gas Usage for Methods"
+	GasUsageForDeployments = "Gas Usage for Deployments"
 )
 
 type ContractCheckResultDetails struct {

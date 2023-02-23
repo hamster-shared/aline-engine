@@ -3,10 +3,11 @@ package model
 import "encoding/json"
 
 type ContractCheckResult[T ResultDetailType] struct {
-	Name    string                          `json:"name"`
-	Result  string                          `json:"result"`
-	Tool    string                          `json:"tool"`
-	Context []ContractCheckResultDetails[T] `json:"context"`
+	Name        string                          `json:"name"`
+	Result      string                          `json:"result"`
+	Tool        string                          `json:"tool"`
+	SolcVersion string                          `json:"solcVersion"`
+	Context     []ContractCheckResultDetails[T] `json:"context"`
 }
 
 func NewContractCheckResult[T ResultDetailType](name string, result string, tool string, context []ContractCheckResultDetails[T]) ContractCheckResult[T] {
@@ -19,13 +20,14 @@ func NewContractCheckResult[T ResultDetailType](name string, result string, tool
 }
 
 type ResultDetailType interface {
-	string | []ContractStyleGuideValidationsReportDetails | []ContractMethodsPropertiesReportDetails | json.RawMessage | []EslintCheckReportDetails
+	string | []ContractStyleGuideValidationsReportDetails | []ContractMethodsPropertiesReportDetails | json.RawMessage | []EslintCheckReportDetails | []UnitTestResult | []IssuesInfo | []GasUsageForMethods | []GasUsageForDeployments
 }
 
 type ContractCheckResultDetails[T ResultDetailType] struct {
-	Name    string `json:"name"`
-	Issue   int    `json:"issue"`
-	Message T      `json:"message"`
+	Name     string `json:"name"`
+	Issue    int    `json:"issue"`
+	GasLimit string `json:"gasLimit"`
+	Message  T      `json:"message"`
 }
 
 func NewContractCheckResultDetails[T ResultDetailType](name string, issue int, message T) ContractCheckResultDetails[T] {
@@ -85,4 +87,31 @@ type EslintCheckReportDetails struct {
 	OriginalText string `json:"originalText"`
 	Note         string `json:"note"`
 	Tool         string `json:"tool"`
+}
+
+type UnitTestResult struct {
+	ContractName string   `json:"contractName"`
+	TestResult   []string `json:"testResult"`
+}
+
+type IssuesInfo struct {
+	ContractName string   `json:"contractName"`
+	IssuesInfo   []string `json:"issuesInfo"`
+}
+
+type GasUsageForMethods struct {
+	ContractName string `json:"contractName"`
+	Method       string `json:"method"`
+	Min          string `json:"min"`
+	Max          string `json:"max"`
+	Avg          string `json:"avg"`
+	Calls        string `json:"calls"`
+}
+
+type GasUsageForDeployments struct {
+	ContractName string `json:"contractName"`
+	Min          string `json:"min"`
+	Max          string `json:"max"`
+	Avg          string `json:"avg"`
+	Limit        string `json:"limit"`
 }

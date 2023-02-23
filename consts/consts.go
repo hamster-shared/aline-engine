@@ -51,6 +51,9 @@ const (
 	SlitherCheckOutputDir     = "slither"
 	SlitherCheck              = "docker run --rm -v %s:/tmp bingjian/solidity_check:slither_091_1_0816 slither /tmp/%s"
 	EslintCheckOutputDir      = "eslint"
+	GasReporterTotalDir       = "gas-reporter"
+	EthGasReporterDir         = "eth-gas-reporter"
+	EthGasReporterTruffle     = "truffle test"
 )
 
 var InkUrlMap = map[string]string{

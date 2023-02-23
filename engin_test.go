@@ -19,7 +19,7 @@ func TestEngine(t *testing.T) {
 	engine := NewEngine()
 
 	jobName := "2e70fb35-f8b3-403e-ae0f-a31d5a945c05_75"
-	data, _ := os.ReadFile("test_ipfs_file.yml")
+	data, _ := os.ReadFile("eth-gas-reporter.yml")
 	yaml := string(data)
 	fmt.Println(yaml)
 	err := engine.CreateJob(jobName, yaml)

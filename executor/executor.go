@@ -183,6 +183,8 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 				ah = action.NewInkAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "frontend-check" {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "eth-gas-reporter" {
+				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if strings.Contains(step.Uses, "/") {
