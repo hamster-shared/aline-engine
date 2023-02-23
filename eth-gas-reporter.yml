@@ -27,3 +27,10 @@ stages:
         uses: eth-gas-reporter
         with:
           solc-version:
+
+  Output Results:
+    needs:
+      - eth-gas-reporter
+    steps:
+      - name: check-aggregation
+        uses: check-aggregation
