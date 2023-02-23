@@ -12,7 +12,7 @@ stages:
     needs:
       - git-clone
     steps:
-      - name: solhint-install
+      - name: gas-install
         run: |
           npm install
       - name: start-local-chain
