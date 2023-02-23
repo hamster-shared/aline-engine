@@ -92,7 +92,7 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 	jobId, _ := stack["id"].(string)
 
 	var tmpPaths []string
-	files := utils.GetSuffixFiles(workdir, ".sol", tmpPaths)
+	files := utils.GetSuffixFiles(path.Join(workdir, "contracts"), ".sol", tmpPaths)
 
 	var checkResult string
 	for _, f := range files {
