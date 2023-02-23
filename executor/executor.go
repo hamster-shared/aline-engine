@@ -186,6 +186,8 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "openai" {
+				ah = action.NewOpenaiAction(step, ctx, jobWrapper.Output)
 			} else if strings.Contains(step.Uses, "/") {
 				ah = action.NewRemoteAction(step, ctx)
 			}
