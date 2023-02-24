@@ -168,7 +168,7 @@ func askOpenAi(file string) string {
 	_ = json.Unmarshal(b, &apResponse)
 
 	if len(apResponse.Choices) > 0 {
-		return path.Base(file) + " \n " + apResponse.Choices[0].Text
+		return path.Base(file) + " \n " + apResponse.Choices[0].Text + "\n"
 	}
 	return ""
 }
