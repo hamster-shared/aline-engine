@@ -90,8 +90,13 @@ type EslintCheckReportDetails struct {
 }
 
 type UnitTestResult struct {
-	ContractName string   `json:"contractName"`
-	TestResult   []string `json:"testResult"`
+	ContractName   string       `json:"contractName"`
+	TestResultList []TestResult `json:"TestResultList"`
+}
+
+type TestResult struct {
+	Result        int    `json:"result"`
+	UnitTestTitle string `json:"unitTestTitle"`
 }
 
 type IssuesInfo struct {

@@ -152,20 +152,26 @@ func (a *EthGasReporterAction) Post() error {
 		}
 		//Unit Test Result
 		if strings.HasPrefix(s, "Contract: ") || strings.HasPrefix(previousLineContent, "Contract: ") {
-			var testResults []string
+			var testResultList []model.TestResult
 			var unitTestResult model.UnitTestResult
 			if previousLineContent == "" {
 				previousLineContent = s
 				unitTestResult.ContractName = strings.TrimSpace(strings.ReplaceAll(previousLineContent, "Contract: ", ""))
 			} else {
-				if r.MatchString(s[:10]) {
+				var testResult model.TestResult
+				if r.MatchString(s[:8]) {
 					issues++
 					successFlag = false
 					index := strings.Index(s, ")")
-					testResults = append(testResults, "×"+s[index+1:])
+					testResult.Result = 0
+					testResult.UnitTestTitle = strings.TrimSpace(s[index+1:])
+					testResultList = append(testResultList, testResult)
 				}
 				if strings.Contains(s, "✓") {
-					testResults = append(testResults, s)
+					index := strings.Index(s, "✓")
+					testResult.Result = 1
+					testResult.UnitTestTitle = strings.TrimSpace(s[index+3:])
+					testResultList = append(testResultList, testResult)
 				}
 			}
 
@@ -186,17 +192,23 @@ func (a *EthGasReporterAction) Post() error {
 				if strings.Contains(s, "·--------") {
 					break
 				}
-				if r.MatchString(s[:10]) {
+				var testResult model.TestResult
+				if r.MatchString(s[:8]) {
 					issues++
 					successFlag = false
 					index := strings.Index(s, ")")
-					testResults = append(testResults, "×"+s[index+1:])
+					testResult.Result = 0
+					testResult.UnitTestTitle = strings.TrimSpace(s[index+1:])
+					testResultList = append(testResultList, testResult)
 				}
 				if strings.Contains(s, "✓") {
-					testResults = append(testResults, s)
+					index := strings.Index(s, "✓")
+					testResult.Result = 1
+					testResult.UnitTestTitle = strings.TrimSpace(s[index+3:])
+					testResultList = append(testResultList, testResult)
 				}
 			}
-			unitTestResult.TestResult = testResults
+			unitTestResult.TestResultList = testResultList
 			unitTestResultList = append(unitTestResultList, unitTestResult)
 			continue
 		}
