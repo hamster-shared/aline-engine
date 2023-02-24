@@ -240,6 +240,9 @@ func (a *EthGasReporterAction) Post() error {
 				replaceAll := strings.ReplaceAll(s, "|", "")
 				replaceAll = strings.ReplaceAll(replaceAll, "│", "")
 				deploymentsInfo := strings.Split(replaceAll, "·")
+				if len(deploymentsInfo) < 5 {
+					continue
+				}
 				var gasUsageForDeployments model.GasUsageForDeployments
 				gasUsageForDeployments.ContractName = strings.TrimSpace(deploymentsInfo[0])
 				gasUsageForDeployments.Min = strings.TrimSpace(deploymentsInfo[1])
@@ -252,7 +255,7 @@ func (a *EthGasReporterAction) Post() error {
 		}
 
 		//Issues  Info
-		if r.MatchString(s[:8]) || previousLineContent != "" {
+		if r.MatchString(s[:5]) || previousLineContent != "" {
 			var issuesInfoStringList []string
 			if previousLineContent == "" {
 				previousLineContent = s
