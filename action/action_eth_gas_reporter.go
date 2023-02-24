@@ -155,9 +155,9 @@ func (a *EthGasReporterAction) Post() error {
 			var testResultList []model.TestResult
 			var unitTestResult model.UnitTestResult
 			if previousLineContent == "" {
-				previousLineContent = s
-				unitTestResult.ContractName = strings.TrimSpace(strings.ReplaceAll(previousLineContent, "Contract: ", ""))
+				unitTestResult.ContractName = strings.TrimSpace(strings.ReplaceAll(s, "Contract: ", ""))
 			} else {
+				unitTestResult.ContractName = strings.TrimSpace(strings.ReplaceAll(previousLineContent, "Contract: ", ""))
 				var testResult model.TestResult
 				if r.MatchString(s[:8]) {
 					issues++
