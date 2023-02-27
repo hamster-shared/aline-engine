@@ -1,11 +1,12 @@
-package service
+package job
 
 import (
-	model2 "github.com/hamster-shared/aline-engine/model"
-	"gopkg.in/yaml.v2"
 	"log"
 	"os/exec"
 	"testing"
+
+	model2 "github.com/hamster-shared/aline-engine/model"
+	"gopkg.in/yaml.v2"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func Test_SaveJob(t *testing.T) {
 			},
 		},
 	}
-	jobService := NewJobService()
+	jobService := NewJober()
 	data, _ := yaml.Marshal(job)
 	err := jobService.SaveJob("qiao", string(data))
 	ass.NilError(t, err)
@@ -83,19 +84,19 @@ func Test_SaveJobDetail(t *testing.T) {
 		Status: model2.STATUS_NOTRUN,
 		Stages: stageDetails,
 	}
-	jobService := NewJobService()
+	jobService := NewJober()
 	jobService.SaveJobDetail("sun", &jobDetail)
 }
 
 func Test_GetJob(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	data := jobService.GetJob("guo")
 	log.Println(data)
 	assert.NotNil(t, data)
 }
 
 func Test_UpdateJob(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	step1 := model2.Step{
 		Name: "jian",
 		Uses: "",
@@ -126,43 +127,43 @@ func Test_UpdateJob(t *testing.T) {
 }
 
 func Test_GetJobDetail(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	data := jobService.GetJobDetail("sun", 3)
 	assert.NotNil(t, data)
 }
 
 func Test_DeleteJob(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	err := jobService.DeleteJob("sun")
 	ass.NilError(t, err)
 }
 
 func Test_DeleteJobDetail(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	err := jobService.DeleteJobDetail("cdqadqa92d3if4r9n8j0", 1)
 	ass.NilError(t, err)
 }
 
 func Test_JobList(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	data := jobService.JobList("cdqadqa92d3if4r9n8j0", 1, 10)
 	assert.NotNil(t, data)
 }
 
 func Test_JobDetailList(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	data := jobService.JobDetailList("sun", 2, 10)
 	log.Println(data)
 	assert.NotNil(t, data)
 }
 
 func Test_ExecuteJob(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	jobService.ExecuteJob("sun")
 }
 
 func TestGetJobLog(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	log := jobService.GetJobLog("test", 10001)
 	if log == nil {
 		t.Error("log is nil")
@@ -171,7 +172,7 @@ func TestGetJobLog(t *testing.T) {
 }
 
 func TestGetStageLog(t *testing.T) {
-	jobService := NewJobService()
+	jobService := NewJober()
 	log := jobService.GetJobStageLog("maven", 11, "code-compile", 0)
 	if log == nil {
 		t.Error("log is nil")

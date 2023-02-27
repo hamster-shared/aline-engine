@@ -2,46 +2,68 @@ package client
 
 import (
 	"context"
-	"github.com/hamster-shared/aline-engine/grpc/api"
 	"io"
-	"log"
-	"time"
+
+	"github.com/hamster-shared/aline-engine/grpc/api"
+	"github.com/hamster-shared/aline-engine/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func runChat(client api.AlineRPCClient) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := client.AlineChat(ctx)
+var (
+	grpcClient api.AlineRPCClient
+)
+
+func GrpcClientStart(address string) error {
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("client.RouteChat failed: %v", err)
+		logger.Errorf("grpc did not connect: %v", err)
+		return err
 	}
-	waitc := make(chan struct{})
+	// 不关闭，在程序运行期间，一直保持连接
+	// defer conn.Close()
+	grpcClient = api.NewAlineRPCClient(conn)
+	return nil
+}
+
+func RecvMessage(msgChan chan *api.AlineMessage) error {
+	stream, err := grpcClient.AlineChat(context.Background())
+	if err != nil {
+		logger.Errorf("gprc client recv message failed: %v", err)
+		return err
+	} else {
+		logger.Trace("gprc client create recv message success")
+	}
+
 	go func() {
 		for {
-			in, err := stream.Recv()
-			if err == io.EOF {
-				// read done.
-				close(waitc)
+			msg, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					// 什么都不做
+					continue
+				}
+				logger.Errorf("gprc client recv message failed: %v", err)
 				return
 			}
-			if err != nil {
-				log.Fatalf("client.RouteChat failed: %v", err)
-			}
-			log.Printf("Got message %s at point(%d, %d)", in.String(), in.Type, in.GetType())
+			logger.Tracef("gprc client recv message success: %v", msg)
+			msgChan <- msg
 		}
 	}()
+	return nil
+}
 
-	notes := []api.AlineMessage{
-		api.AlineMessage{
-			Type: 1,
-		},
+func SendMessage(ctx context.Context, msg *api.AlineMessage) error {
+	stream, err := grpcClient.AlineChat(ctx)
+	if err != nil {
+		logger.Errorf("gprc client send message failed: %v", err)
+		return err
 	}
 
-	for _, note := range notes {
-		if err := stream.Send(&note); err != nil {
-			log.Fatalf("client.RouteChat: stream.Send(%v) failed: %v", note, err)
-		}
+	if err := stream.Send(msg); err != nil {
+		logger.Errorf("gprc client send message failed: %v", err)
+		return err
 	}
 	stream.CloseSend()
-	<-waitc
+	return nil
 }

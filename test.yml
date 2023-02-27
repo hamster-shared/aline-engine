@@ -1,0 +1,7 @@
+version: 1.0
+name: hello-world
+stages:
+  say-hello:
+    steps:
+      - name: say-hello
+        runs-on: hello-world

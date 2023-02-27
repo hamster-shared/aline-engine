@@ -11,6 +11,7 @@ type QueueMessage struct {
 	JobName string
 	JobId   int
 	Command Command
+	Node    *Node
 }
 
 func NewStartQueueMsg(name string, id int) QueueMessage {
@@ -29,6 +30,24 @@ func NewStopQueueMsg(name string, id int) QueueMessage {
 		Command: Command_Stop,
 	}
 
+}
+
+func NewStartQueueMsgToNode(name string, id int, node *Node) QueueMessage {
+	return QueueMessage{
+		JobName: name,
+		JobId:   id,
+		Command: Command_Start,
+		Node:    node,
+	}
+}
+
+func NewStopQueueMsgToNode(name string, id int, node *Node) QueueMessage {
+	return QueueMessage{
+		JobName: name,
+		JobId:   id,
+		Command: Command_Stop,
+		Node:    node,
+	}
 }
 
 type StatusChangeMessage struct {

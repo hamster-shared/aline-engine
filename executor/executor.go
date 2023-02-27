@@ -3,18 +3,19 @@ package executor
 import (
 	"context"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/action"
-	"github.com/hamster-shared/aline-engine/logger"
-	model2 "github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/service"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hamster-shared/aline-engine/action"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/service"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type IExecutor interface {
@@ -23,44 +24,43 @@ type IExecutor interface {
 	FetchJob(name string) (io.Reader, error)
 
 	// Execute 执行任务
-	Execute(id int, job *model2.Job) error
+	Execute(id int, job *model.Job) error
 
 	// HandlerLog 处理日志
 	HandlerLog(jobId int)
 
 	//SendResultToQueue 发送结果到队列
-	SendResultToQueue(channel chan model2.StatusChangeMessage, jobWrapper *model2.JobDetail)
+	SendResultToQueue(channel chan model.StatusChangeMessage, jobWrapper *model.JobDetail)
 
-	Cancel(id int, job *model2.Job) error
+	Cancel(id int, job *model.Job) error
 }
 
 type Executor struct {
 	cancelMap       map[string]func()
-	jobService      service.IJobService
-	callbackChannel chan model2.StatusChangeMessage
+	jobService      service.Jober
+	callbackChannel chan model.StatusChangeMessage
 }
 
 // FetchJob 获取任务
 func (e *Executor) FetchJob(name string) (io.Reader, error) {
-
 	//TODO... 根据 name 从 rpc 或 直接内部调用获取 job 的 pipeline 文件
 	job := e.jobService.GetJob(name)
 	return strings.NewReader(job), nil
 }
 
 // Execute 执行任务
-func (e *Executor) Execute(id int, job *model2.Job) error {
+func (e *Executor) Execute(id int, job *model.Job) error {
 
 	// 1. 解析对 pipeline 进行任务排序
 	stages, err := job.StageSort()
-	jobWrapper := &model2.JobDetail{
+	jobWrapper := &model.JobDetail{
 		Id:     id,
 		Job:    *job,
-		Status: model2.STATUS_NOTRUN,
+		Status: model.STATUS_NOTRUN,
 		Stages: stages,
-		ActionResult: model2.ActionResult{
-			Artifactorys: make([]model2.Artifactory, 0),
-			Reports:      make([]model2.Report, 0),
+		ActionResult: model.ActionResult{
+			Artifactorys: make([]model.Artifactory, 0),
+			Reports:      make([]model.Report, 0),
 		},
 	}
 
@@ -100,16 +100,16 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 	// 队列堆栈
 	var stack utils.Stack[action.ActionHandler]
 
-	jobWrapper.Status = model2.STATUS_RUNNING
+	jobWrapper.Status = model.STATUS_RUNNING
 	jobWrapper.StartTime = time.Now()
 
-	executeAction := func(ah action.ActionHandler, job *model2.JobDetail) error {
-		if jobWrapper.Status != model2.STATUS_RUNNING {
+	executeAction := func(ah action.ActionHandler, job *model.JobDetail) error {
+		if jobWrapper.Status != model.STATUS_RUNNING {
 			return nil
 		}
 		err := ah.Pre()
 		if err != nil {
-			job.Status = model2.STATUS_FAIL
+			job.Status = model.STATUS_FAIL
 			fmt.Println(err)
 			return err
 		}
@@ -128,7 +128,7 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 			jobWrapper.Deploys = append(jobWrapper.Deploys, actionResult.Deploys...)
 		}
 		if err != nil {
-			job.Status = model2.STATUS_FAIL
+			job.Status = model.STATUS_FAIL
 			return err
 		}
 		return nil
@@ -140,7 +140,7 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 		//TODO ... stage 的输出也需要换成堆栈方式
 		logger.Info("stage: {")
 		logger.Infof("   // %s", stageWapper.Name)
-		stageWapper.Status = model2.STATUS_RUNNING
+		stageWapper.Status = model.STATUS_RUNNING
 		stageWapper.StartTime = time.Now()
 		jobWrapper.Stages[index] = stageWapper
 		jobWrapper.Output.NewStage(stageWapper.Name)
@@ -156,7 +156,7 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 				}
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
-			stageWapper.Stage.Steps[index].Status = model2.STATUS_RUNNING
+			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
 			if step.Uses == "" || step.Uses == "shell" {
 				ah = action.NewShellAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "git-checkout" {
@@ -192,10 +192,10 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 			dataTime := time.Now().Sub(stageWapper.Stage.Steps[index].StartTime)
 			stageWapper.Stage.Steps[index].Duration = dataTime.Milliseconds()
 			if err != nil {
-				stageWapper.Stage.Steps[index].Status = model2.STATUS_FAIL
+				stageWapper.Stage.Steps[index].Status = model.STATUS_FAIL
 				break
 			}
-			stageWapper.Stage.Steps[index].Status = model2.STATUS_SUCCESS
+			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
 		}
 
 		for !stack.IsEmpty() {
@@ -204,9 +204,9 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 		}
 
 		if err != nil {
-			stageWapper.Status = model2.STATUS_FAIL
+			stageWapper.Status = model.STATUS_FAIL
 		} else {
-			stageWapper.Status = model2.STATUS_SUCCESS
+			stageWapper.Status = model.STATUS_SUCCESS
 		}
 		dataTime := time.Now().Sub(stageWapper.StartTime)
 		stageWapper.Duration = dataTime.Milliseconds()
@@ -223,9 +223,9 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 
 	delete(e.cancelMap, job.Name)
 	if err == nil {
-		jobWrapper.Status = model2.STATUS_SUCCESS
+		jobWrapper.Status = model.STATUS_SUCCESS
 	} else {
-		jobWrapper.Status = model2.STATUS_FAIL
+		jobWrapper.Status = model.STATUS_FAIL
 		jobWrapper.Error = err.Error()
 	}
 
@@ -248,13 +248,13 @@ func (e *Executor) HandlerLog(jobId int) {
 }
 
 // SendResultToQueue 发送结果到队列
-func (e *Executor) SendResultToQueue(channel chan model2.StatusChangeMessage, job *model2.JobDetail) {
+func (e *Executor) SendResultToQueue(channel chan model.StatusChangeMessage, job *model.JobDetail) {
 	//TODO ...
-	channel <- model2.NewStatusChangeMsg(job.Name, job.Id, job.Status)
+	channel <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
 }
 
 // Cancel 取消
-func (e *Executor) Cancel(id int, job *model2.Job) error {
+func (e *Executor) Cancel(id int, job *model.Job) error {
 
 	cancel, ok := e.cancelMap[strings.Join([]string{job.Name, strconv.Itoa(id)}, "/")]
 	if ok {

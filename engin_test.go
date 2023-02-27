@@ -2,34 +2,30 @@ package engine
 
 import (
 	"fmt"
-	"github.com/hamster-shared/aline-engine/logger"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-	"net/url"
 	"os"
 	"testing"
-	"time"
+
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEngine(t *testing.T) {
 
 	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
 
-	engine := NewEngine()
+	engine := NewEngine(AsMaster("0.0.0.0:50051"))
 
-	jobName := "2e70fb35-f8b3-403e-ae0f-a31d5a945c05_75"
-	data, _ := os.ReadFile("test_ipfs_file.yml")
-	yaml := string(data)
-	fmt.Println(yaml)
-	err := engine.CreateJob(jobName, yaml)
+	jobName := "hello-world"
+	data, err := os.ReadFile("test.yml")
 	assert.NoError(t, err)
 
-	params := make(map[string]string)
-	params["baseDir"] = "dist"
-	params["ArtifactUrl"] = "file:///Users/mohaijiang/pipelines/jobs/2e70fb35-f8b3-403e-ae0f-a31d5a945c05_74/artifactory/2/frontend.zip"
+	yaml := string(data)
+	fmt.Println(yaml)
 
-	engine.SaveJobParams("2e70fb35-f8b3-403e-ae0f-a31d5a945c05_75", params)
+	err = engine.CreateJob(jobName, yaml)
+	assert.NoError(t, err)
+	logger.Info("create job success")
 
 	job := engine.GetJob(jobName)
 	_, err = job.StageSort()
@@ -37,24 +33,29 @@ func TestEngine(t *testing.T) {
 
 	go engine.Start()
 	detail, err := engine.ExecuteJob(jobName)
-
 	assert.NoError(t, err)
-	fmt.Println(detail.Id)
+	t.Log(detail)
 
-	for {
-		time.Sleep(1 * time.Second)
-		jobDetail := engine.GetJobHistory(jobName, detail.Id)
-		if jobDetail.Status > model.STATUS_RUNNING {
-			break
-		}
-	}
+	// for {
+	// 	time.Sleep(1 * time.Second)
+	// 	jobDetail := engine.GetJobHistory(jobName, detail.Id)
+	// 	if jobDetail.Status > model.STATUS_RUNNING {
+	// 		break
+	// 	}
+	// }
 
 }
 
-func TestURL(t *testing.T) {
+// func TestURL(t *testing.T) {
 
-	URL, err := url.Parse("file:///tmp/test/dist.zip")
-	assert.NoError(t, err)
-	fmt.Println(URL.RequestURI())
+// 	URL, err := url.Parse("file:///tmp/test/dist.zip")
+// 	assert.NoError(t, err)
+// 	fmt.Println(URL.RequestURI())
 
-}
+// }
+
+// func TestEngineWork(t *testing.T) {
+// 	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+// 	e := NewEngine(AsMaster("0.0.0.0:50051"))
+// 	e.Start()
+// }

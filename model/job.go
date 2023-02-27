@@ -25,7 +25,7 @@ type Job struct {
 	Version   string            `yaml:"version,omitempty" json:"version"`
 	Name      string            `yaml:"name,omitempty" json:"name"`
 	Stages    map[string]Stage  `yaml:"stages,omitempty" json:"stages"`
-	Parameter map[string]string `yaml:"parameter" json:"parameter"`
+	Parameter map[string]string `yaml:"parameter,omitempty" json:"parameter"`
 }
 
 type JobVo struct {

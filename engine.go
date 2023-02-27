@@ -1,154 +1,42 @@
 package engine
 
-import (
-	"fmt"
-	"github.com/hamster-shared/aline-engine/dispatcher"
-	"github.com/hamster-shared/aline-engine/executor"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/service"
-	"os"
+type Engine interface{}
+type MasterEngine interface{}
+type SlaveEngine interface{}
+
+type Role int
+
+const (
+	Master Role = iota
+	Worker
 )
 
-type Engine struct {
-	channel         chan model.QueueMessage
-	callbackChannel chan model.StatusChangeMessage
-	jobService      service.IJobService
-	dispatch        dispatcher.IDispatcher
-	executeClient   *executor.ExecutorClient
+type engine struct {
+	// channel         chan model.QueueMessage
+	// callbackChannel chan model.StatusChangeMessage
+	role   Role
+	master *masterEngine
+	worker *workerEngine
 }
 
-func NewEngine() *Engine {
+type EngineOption func(*engine)
 
-	channel := make(chan model.QueueMessage)
-	callbackChannel := make(chan model.StatusChangeMessage)
-	jobService := service.NewJobService()
-	dispatch := dispatcher.NewDispatcher(channel, callbackChannel)
-	executeClient := executor.NewExecutorClient(channel, callbackChannel, jobService)
-
-	hostname, _ := os.Hostname()
-
-	dispatch.Register(&model.Node{
-		Name:    hostname,
-		Address: "127.0.0.1",
-	})
-
-	return &Engine{
-		channel:         channel,
-		callbackChannel: callbackChannel,
-		jobService:      jobService,
-		dispatch:        dispatch,
-		executeClient:   executeClient,
+func AsMaster(listenAddress string) EngineOption {
+	return func(e *engine) {
+		e.master = newMasterEngine(listenAddress)
+		e.worker = nil
 	}
 }
 
-func (e *Engine) Start() {
-	e.executeClient.Main()
-}
-
-func (e *Engine) CreateJob(name string, yaml string) error {
-
-	return e.jobService.SaveJob(name, yaml)
-}
-
-func (e *Engine) SaveJobParams(name string, params map[string]string) error {
-	return e.jobService.SaveJobParams(name, params)
-}
-
-func (e *Engine) DeleteJob(name string) error {
-	return e.jobService.DeleteJob(name)
-}
-
-func (e *Engine) UpdateJob(name, newName, jobYaml string) error {
-
-	return e.jobService.UpdateJob(name, newName, jobYaml)
-}
-
-func (e *Engine) GetJob(name string) *model.Job {
-	return e.jobService.GetJobObject(name)
-}
-
-func (e *Engine) GetJobs(keyword string, page int, size int) *model.JobPage {
-	return e.jobService.JobList(keyword, page, size)
-}
-
-func (e *Engine) ExecuteJob(name string) (*model.JobDetail, error) {
-
-	job := e.jobService.GetJobObject(name)
-	jobDetail, err := e.jobService.ExecuteJob(name)
-	if err != nil {
-		return nil, err
+func NewEngine(opts ...EngineOption) *engine {
+	e := &engine{}
+	e.worker = newWorkerEngine()
+	for _, opt := range opts {
+		opt(e)
 	}
-	node := e.dispatch.DispatchNode(job)
-	e.dispatch.SendJob(jobDetail, node)
-	return jobDetail, nil
+	return e
 }
 
-func (e *Engine) ReExecuteJob(name string, historyId int) error {
-
-	err := e.jobService.ReExecuteJob(name, historyId)
-	job := e.jobService.GetJobObject(name)
-	jobDetail := e.jobService.GetJobDetail(name, historyId)
-	node := e.dispatch.DispatchNode(job)
-	e.dispatch.SendJob(jobDetail, node)
-	return err
-}
-
-func (e *Engine) TerminalJob(name string, historyId int) error {
-
-	err := e.jobService.StopJobDetail(name, historyId)
-	if err != nil {
-		return err
-	}
-	job := e.jobService.GetJobObject(name)
-	jobDetail := e.jobService.GetJobDetail(name, historyId)
-	node := e.dispatch.DispatchNode(job)
-	e.dispatch.CancelJob(jobDetail, node)
-	return nil
-}
-
-func (e *Engine) GetJobHistory(name string, historyId int) *model.JobDetail {
-	return e.jobService.GetJobDetail(name, historyId)
-}
-
-func (e *Engine) GetJobHistorys(name string, page, size int) *model.JobDetailPage {
-	return e.jobService.JobDetailList(name, page, size)
-}
-
-func (e *Engine) DeleteJobHistory(name string, historyId int) error {
-	return e.jobService.DeleteJobDetail(name, historyId)
-}
-
-func (e *Engine) GetJobHistoryLog(name string, historyId int) *model.JobLog {
-	return e.jobService.GetJobLog(name, historyId)
-}
-
-func (e *Engine) GetJobHistoryStageLog(name string, historyId int, stageName string, start int) *model.JobStageLog {
-	return e.jobService.GetJobStageLog(name, historyId, stageName, start)
-}
-
-func (e *Engine) GetCodeInfo(name string, historyId int) string {
-	jobDetail := e.jobService.GetJobDetail(name, historyId)
-	if jobDetail != nil {
-		return jobDetail.CodeInfo
-	}
-	return ""
-}
-
-func (e *Engine) RegisterStatusChangeHook(hookResult func(message model.StatusChangeMessage)) {
-	for { //
-
-		//3. 监听队列
-		statusMsg, ok := <-e.callbackChannel
-		if !ok {
-			return
-		}
-
-		fmt.Println("=======[status callback]=========")
-		fmt.Println(statusMsg)
-		fmt.Println("=======[status callback]=========")
-
-		if hookResult != nil {
-			hookResult(statusMsg)
-		}
-	}
+func (e *engine) Start() {
+	e.worker.executeClient.Main()
 }
