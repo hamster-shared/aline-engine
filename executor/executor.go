@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -104,11 +105,23 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 	jobWrapper.Status = model2.STATUS_RUNNING
 	jobWrapper.StartTime = time.Now()
 
-	executeAction := func(ah action.ActionHandler, job *model2.JobDetail) error {
+	executeAction := func(ah action.ActionHandler, job *model2.JobDetail) (err error) {
+		// 延迟处理的函数
+		defer func() {
+			// 发生宕机时，获取panic传递的上下文并打印
+			rErr := recover()
+			switch rErr.(type) {
+			case runtime.Error: // 运行时错误
+				fmt.Println("runtime error:", rErr)
+				err = fmt.Errorf("runtime error: %s", rErr)
+			default: // 非运行时错误
+				// do nothing
+			}
+		}()
 		if jobWrapper.Status != model2.STATUS_RUNNING {
 			return nil
 		}
-		err := ah.Pre()
+		err = ah.Pre()
 		if err != nil {
 			job.Status = model2.STATUS_FAIL
 			fmt.Println(err)
@@ -132,7 +145,7 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 			job.Status = model2.STATUS_FAIL
 			return err
 		}
-		return nil
+		return err
 	}
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
