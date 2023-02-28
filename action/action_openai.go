@@ -126,7 +126,7 @@ func askOpenAi(file string) string {
 		Model:            "code-davinci-002",
 		Prompt:           prompt,
 		Temperature:      0,
-		MaxTokens:        100,
+		MaxTokens:        200,
 		TopP:             1.0,
 		FrequencyPenalty: 0.2,
 		PresencePenalty:  0.0,
