@@ -159,7 +159,7 @@ func (a *EthGasReporterAction) Post() error {
 			} else {
 				unitTestResult.ContractName = strings.TrimSpace(strings.ReplaceAll(previousLineContent, "Contract: ", ""))
 				var testResult model.TestResult
-				if r.MatchString(s[:8]) {
+				if len(s) > 8 && r.MatchString(s[:8]) {
 					issues++
 					successFlag = false
 					index := strings.Index(s, ")")
@@ -193,7 +193,7 @@ func (a *EthGasReporterAction) Post() error {
 					break
 				}
 				var testResult model.TestResult
-				if r.MatchString(s[:8]) {
+				if len(s) > 8 && r.MatchString(s[:8]) {
 					issues++
 					successFlag = false
 					index := strings.Index(s, ")")
@@ -267,7 +267,7 @@ func (a *EthGasReporterAction) Post() error {
 		}
 
 		//Issues  Info
-		if r.MatchString(s[:5]) || previousLineContent != "" {
+		if (len(s) > 5 && r.MatchString(s[:5])) || previousLineContent != "" {
 			var issuesInfoStringList []string
 			if previousLineContent == "" {
 				previousLineContent = s
@@ -287,7 +287,7 @@ func (a *EthGasReporterAction) Post() error {
 				if s == "" {
 					continue
 				}
-				if r.MatchString(s[:5]) {
+				if len(s) > 5 && r.MatchString(s[:5]) {
 					previousLineContent = s
 					break
 				}
