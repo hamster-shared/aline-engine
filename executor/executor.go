@@ -183,6 +183,8 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 				ah = action.NewArtifactoryAction(step, ctx, jobWrapper.Output)
 				//} else if step.Uses == "deploy-contract" {
 				//	ah = action.NewTruffleDeployAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "k8s-frontend-deploy" {
+				ah = action.NewK8sDeployAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "sol-profiler-check" {
 				ah = action.NewSolProfilerAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "solhint-check" {
