@@ -1,12 +1,9 @@
 package utils
 
 import (
-	"encoding/json"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"log"
-	"os/exec"
-	"strings"
 	"testing"
 )
 
@@ -51,7 +48,7 @@ func Test_k8s(t *testing.T) {
 		Ports: ports,
 	}
 	containers = append(containers, container1)
-	err = CreateDeployment(client, "jian-guo-s", "jian-guo-s-test", containers)
+	_, err = CreateDeployment(client, "jian-guo-s", "jian-guo-s-test", containers)
 	if err != nil {
 		log.Println("create deployment failed +++++++", err.Error())
 		return
@@ -69,66 +66,4 @@ func Test_k8s(t *testing.T) {
 		log.Println("create service failed: ", err.Error())
 		return
 	}
-}
-
-type Container struct {
-	Name  string          `json:"name"`
-	Image string          `json:"image"`
-	Ports []ContainerPort `json:"ports"`
-}
-
-type ContainerPort struct {
-	ContainerPort int32 `json:"containerPort"`
-}
-
-type ServicePort struct {
-	Protocol   string `json:"protocol"`
-	Port       int32  `json:"port"`
-	TargetPort int32  `json:"targetPort"`
-	NodePort   int32  `json:"nodePort"`
-}
-
-func Test_Data(t *testing.T) {
-	var servicePorts []corev1.ServicePort
-	var serPorts []ServicePort
-	ser := ServicePort{
-		Protocol:   "TCP",
-		Port:       8081,
-		TargetPort: 8080,
-		NodePort:   30317,
-	}
-	serPorts = append(serPorts, ser)
-	jsonString, err := json.Marshal(serPorts)
-	if err != nil {
-		log.Println("--------------")
-		log.Println(err.Error())
-		log.Println("---------------")
-		return
-	}
-	err = json.Unmarshal(jsonString, &servicePorts)
-	if err != nil {
-		log.Println("++++++++++++")
-		log.Println(err.Error())
-		log.Println("++++++++++++")
-	}
-	log.Println(servicePorts[0].Port)
-	log.Println(servicePorts[0].Protocol)
-	log.Println(servicePorts[0].NodePort)
-	log.Println(servicePorts[0].TargetPort.String())
-}
-
-func Test_docker(t *testing.T) {
-	cmd := exec.Command("docker", "search", "hamstershare/dfafafafasf")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println("sfsfsfsfsfsfsfs")
-		log.Println(err.Error())
-		log.Println("-----------")
-	}
-	res := string(out)
-	dd := strings.Fields(res)
-	log.Println("------------")
-	log.Println(len(dd))
-	log.Println("----------")
-	log.Println(string(out))
 }

@@ -90,6 +90,7 @@ func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("k8s containers format failed: %s", err.Error())
 		return nil, err
 	}
+	containers[0].Image = k.image
 	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
 	deploymentRes, err := utils.CreateDeployment(client, k.namespace, name, containers)
 	if err != nil {
