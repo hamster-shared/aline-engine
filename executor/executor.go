@@ -141,6 +141,9 @@ func (e *Executor) Execute(id int, job *model2.Job) error {
 		if actionResult != nil && len(actionResult.Deploys) > 0 {
 			jobWrapper.Deploys = append(jobWrapper.Deploys, actionResult.Deploys...)
 		}
+		if actionResult != nil && len(actionResult.BuildData) > 0 {
+			jobWrapper.BuildData = append(jobWrapper.BuildData, actionResult.BuildData...)
+		}
 		if err != nil {
 			job.Status = model2.STATUS_FAIL
 			return err

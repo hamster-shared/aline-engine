@@ -32,5 +32,5 @@ type ActionResult struct {
 	Artifactorys []Artifactory `json:"artifactorys"`
 	Reports      []Report      `json:"reports"`
 	Deploys      []DeployInfo  `json:"deploys"`
-	BuildData    []BuildInfo   `json:"buildInfo"`
+	BuildData    []BuildInfo   `json:"buildData"`
 }
