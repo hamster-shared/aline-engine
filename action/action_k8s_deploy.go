@@ -3,14 +3,12 @@ package action
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
 	"github.com/hamster-shared/aline-engine/utils"
 	corev1 "k8s.io/api/core/v1"
-	"os/exec"
 )
 
 type K8sDeployAction struct {
@@ -50,26 +48,6 @@ func (k *K8sDeployAction) Pre() error {
 	logger.Debugf("k8s deploy image is : %s", k.image)
 	k.servicePorts = utils.ReplaceWithParam(k.servicePorts, params)
 	logger.Debugf("k8s deploy service ports is : %s", k.servicePorts)
-	workdir, ok := stack["workdir"].(string)
-	if !ok {
-		return errors.New("get workdir error")
-	}
-	dockerBuildCmd := exec.Command("docker", "buildx", "build", "-t", k.image, "--platform=linux/amd64", ".")
-	dockerBuildCmd.Dir = workdir
-	output, err := dockerBuildCmd.CombinedOutput()
-	k.output.WriteLine(string(output))
-	if err != nil {
-		logger.Errorf("execute docker build command error: %s", err.Error())
-		return err
-	}
-	dockerPushCmd := exec.Command("docker", "push", k.image)
-	dockerPushCmd.Dir = workdir
-	pushOut, err := dockerPushCmd.CombinedOutput()
-	k.output.WriteLine(string(pushOut))
-	if err != nil {
-		logger.Errorf("execute docker push command error: %s", err.Error())
-		return err
-	}
 	return nil
 }
 
@@ -92,15 +70,10 @@ func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 	}
 	containers[0].Image = k.image
 	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
-	deploymentRes, err := utils.CreateDeployment(client, k.namespace, name, containers)
+	_, err = utils.CreateDeployment(client, k.namespace, name, containers)
 	if err != nil {
 		logger.Errorf("k8s create deployment failed: %s", err.Error())
 		return nil, err
-	}
-	logger.Debugf("k8s deployment replicas is :%d", deploymentRes.Status.Replicas)
-	if deploymentRes.Status.Replicas == 0 {
-		logger.Errorf("k8s container start failed,replicas is :%d", deploymentRes.Status.ReadyReplicas)
-		return nil, errors.New("k8s container start failed")
 	}
 	var servicePorts []corev1.ServicePort
 	err = json.Unmarshal([]byte(k.servicePorts), &servicePorts)

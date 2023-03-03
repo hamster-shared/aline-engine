@@ -56,7 +56,7 @@ func CreateDeployment(client *kubernetes.Clientset, username, deploymentName str
 			Name: deploymentName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(3),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": deploymentName,

@@ -11,6 +11,7 @@ import (
 	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
+	"os/exec"
 	path2 "path"
 	"path/filepath"
 	"strconv"
@@ -19,11 +20,12 @@ import (
 
 // ArtifactoryAction Storage building
 type ArtifactoryAction struct {
-	name     string
-	path     []string
-	compress bool
-	output   *output.Output
-	ctx      context.Context
+	name      string
+	path      []string
+	imageName string
+	compress  bool
+	output    *output.Output
+	ctx       context.Context
 }
 
 func NewArtifactoryAction(step model2.Step, ctx context.Context, output *output.Output) *ArtifactoryAction {
@@ -45,11 +47,12 @@ func NewArtifactoryAction(step model2.Step, ctx context.Context, output *output.
 	}
 
 	return &ArtifactoryAction{
-		name:     step.With["name"],
-		path:     strings.Split(path, "\n"),
-		ctx:      ctx,
-		compress: compress,
-		output:   output,
+		name:      step.With["name"],
+		imageName: step.With["image_name"],
+		path:      strings.Split(path, "\n"),
+		ctx:       ctx,
+		compress:  compress,
+		output:    output,
 	}
 }
 
@@ -62,6 +65,9 @@ func (a *ArtifactoryAction) Pre() error {
 	}
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 	workdir, ok := stack["workdir"].(string)
+	params := stack["parameter"].(map[string]string)
+	a.imageName = utils.ReplaceWithParam(a.imageName, params)
+	logger.Debugf("image name is  : %s", a.imageName)
 	if !ok {
 		return errors.New("get workdir error")
 	}
@@ -72,6 +78,16 @@ func (a *ArtifactoryAction) Pre() error {
 	}
 	var absPathList []string
 	a.path = GetFiles(workdir, fullPathList, absPathList)
+	buildCommands := []string{"docker", "buildx", "build", "-t", a.imageName, "--platform=linux/amd64", "."}
+	_, err := a.ExecuteCommand(buildCommands, workdir)
+	if err != nil {
+		return errors.New("docker build image failed")
+	}
+	pushCommands := []string{"docker", "push", a.imageName}
+	_, err = a.ExecuteCommand(pushCommands, workdir)
+	if err != nil {
+		return errors.New("docker push image failed")
+	}
 	return nil
 }
 
@@ -143,7 +159,10 @@ func (a *ArtifactoryAction) Hook() (*model2.ActionResult, error) {
 				Url:  dest,
 			})
 		}
-
+		image := model2.BuildInfo{
+			ImageName: a.imageName,
+		}
+		actionResult.BuildInfo = append(actionResult.BuildInfo, image)
 		return actionResult, nil
 	}
 }
@@ -170,4 +189,18 @@ func GetFiles(workdir string, fuzzyPath []string, pathList []string) []string {
 		}
 	}
 	return pathList
+}
+
+func (a *ArtifactoryAction) ExecuteCommand(commands []string, workdir string) (string, error) {
+	c := exec.CommandContext(a.ctx, commands[0], commands[1:]...) // mac linux
+	c.Dir = workdir
+	logger.Debugf("execute docker command: %s", strings.Join(commands, " "))
+	a.output.WriteCommandLine(strings.Join(commands, " "))
+	out, err := c.CombinedOutput()
+	fmt.Println(string(out))
+	a.output.WriteCommandLine(string(out))
+	if err != nil {
+		a.output.WriteLine(err.Error())
+	}
+	return string(out), err
 }

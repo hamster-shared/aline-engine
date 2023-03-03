@@ -23,9 +23,14 @@ type DeployInfo struct {
 	Url string `json:"url"`
 }
 
+type BuildInfo struct {
+	ImageName string `json:"imageName"`
+}
+
 type ActionResult struct {
 	CodeInfo     string
 	Artifactorys []Artifactory `json:"artifactorys"`
 	Reports      []Report      `json:"reports"`
 	Deploys      []DeployInfo  `json:"deploys"`
+	BuildInfo    []BuildInfo   `json:"buildInfo"`
 }
