@@ -48,6 +48,16 @@ type Usage struct {
 	TotalTokens      uint `json:"total_tokens"`
 }
 
+type OpenAiChatRequestBody struct {
+	Model    string              `json:"model"`
+	Messages []OpenAiChatMessage `json:"messages"`
+}
+
+type OpenAiChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 type OpenaiAction struct {
 	output *output.Output
 	ctx    context.Context
@@ -66,23 +76,6 @@ func (a *OpenaiAction) Pre() error {
 
 	return nil
 }
-
-/*
-
-#            echo curl https://api.openai.com/v1/completions \
-#              -H "Content-Type: application/json" \
-#              -H "Authorization: Bearer $OPENAI_API_KEY" \
-#              -d '{
-#              "model": "code-davinci-002",
-#              "prompt": "'$content'",
-#              "temperature": 0,
-#              "max_tokens": 100,
-#              "top_p": 1.0,
-#              "frequency_penalty": 0.2,
-#              "presence_penalty": 0.0,
-#              "stop": ["###"]
-#            }'
-*/
 
 // Hook 执行
 func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
@@ -171,6 +164,85 @@ func askOpenAi(file string) string {
 		return path.Base(file) + " \n " + apResponse.Choices[0].Text + "\n"
 	}
 	return ""
+}
+
+func askOpenAiChat(file string) string {
+	content, err := os.ReadFile(file)
+
+	prompt := fmt.Sprintf("%s\n### Security risk with above code", content)
+
+	apiReq := OpenAiChatRequestBody{
+		Model: "gpt-3.5-turbo",
+		Messages: []OpenAiChatMessage{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+	}
+	json_data, err := json.Marshal(apiReq)
+	bodyReader := bytes.NewReader(json_data)
+	url := "https://api.openai.com/v1/chat/completions"
+
+	request, err := http.NewRequest("POST", url, bodyReader)
+	if err != nil {
+		log.Println("http.NewRequest,[err=%s][url=%s]", err, url)
+		return ""
+	}
+	request.Header.Set("Connection", "Keep-Alive")
+	request.Header.Set("Content-Type", "application/json")
+	openAiAPIKEY := os.Getenv("OPENAI_API_KEY")
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
+	var resp *http.Response
+	resp, err = http.DefaultClient.Do(request)
+	if err != nil {
+		log.Printf("http.Do failed,[err=%s][url=%s]\n", err, url)
+		return ""
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return ""
+	}
+
+	b, err := io.ReadAll(resp.Body)
+
+	var apResponse OpenAiChatResponseBody
+	_ = json.Unmarshal(b, &apResponse)
+
+	if len(apResponse.Choices) > 0 {
+		content := path.Base(file) + " \n "
+		for _, choices := range apResponse.Choices {
+			content += choices.Message.Content + "\n"
+		}
+		return content
+	}
+	return ""
+}
+
+type OpenAiChatResponseBody struct {
+	Id      string `json:"id"`
+	Object  string `json:"object"`
+	Created uint   `json:"created"`
+	Model   string `json:"model"`
+	Usage   struct {
+		PromptTokens     uint `json:"prompt_tokens"`
+		CompletionTokens uint `json:"completion_tokens"`
+		TotalTokens      uint `json:"total_tokens"`
+	} `json:"usage"`
+	Choices []struct {
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
+		Index        uint   `json:"index"`
+	} `json:"choices"`
 }
 
 // Post 执行后清理 (无论执行是否成功，都应该有Post的清理)
