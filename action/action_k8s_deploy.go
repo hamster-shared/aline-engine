@@ -42,13 +42,13 @@ func (k *K8sDeployAction) Pre() error {
 	params := stack["parameter"].(map[string]string)
 	k.namespace = utils.ReplaceWithParam(k.namespace, params)
 	logger.Debugf("k8s namespace : %s", k.namespace)
-	k.containers = utils.ReplaceWithParam(k.containers, params)
+	k.containers = params["containers"]
 	logger.Debugf("k8s containers : %s", k.containers)
 	k.projectName = utils.ReplaceWithParam(k.projectName, params)
 	logger.Debugf("k8s deploy project name is : %s", k.projectName)
 	k.image = utils.ReplaceWithParam(k.image, params)
 	logger.Debugf("k8s deploy image is : %s", k.image)
-	k.servicePorts = utils.ReplaceWithParam(k.servicePorts, params)
+	k.servicePorts = params["servicePorts"]
 	logger.Debugf("k8s deploy service ports is : %s", k.servicePorts)
 	workdir, ok := stack["workdir"].(string)
 	if !ok {
