@@ -42,19 +42,19 @@ func (k *K8sDeployAction) Pre() error {
 	params := stack["parameter"].(map[string]string)
 	k.namespace = utils.ReplaceWithParam(k.namespace, params)
 	logger.Debugf("k8s namespace : %s", k.namespace)
-	k.containers = params["containers"]
+	k.containers = utils.ReplaceWithParam(k.containers, params)
 	logger.Debugf("k8s containers : %s", k.containers)
 	k.projectName = utils.ReplaceWithParam(k.projectName, params)
 	logger.Debugf("k8s deploy project name is : %s", k.projectName)
 	k.image = utils.ReplaceWithParam(k.image, params)
 	logger.Debugf("k8s deploy image is : %s", k.image)
-	k.servicePorts = params["servicePorts"]
+	k.servicePorts = utils.ReplaceWithParam(k.servicePorts, params)
 	logger.Debugf("k8s deploy service ports is : %s", k.servicePorts)
 	workdir, ok := stack["workdir"].(string)
 	if !ok {
 		return errors.New("get workdir error")
 	}
-	dockerBuildCmd := exec.Command("docker", "build", "-t", k.image, ".")
+	dockerBuildCmd := exec.Command("docker", "buildx", "build", "-t", k.image, "--platform=linux/amd64", ".")
 	dockerBuildCmd.Dir = workdir
 	output, err := dockerBuildCmd.CombinedOutput()
 	k.output.WriteLine(string(output))
