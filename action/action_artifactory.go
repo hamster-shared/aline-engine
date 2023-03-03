@@ -131,12 +131,22 @@ func (a *ArtifactoryAction) Hook() (*model2.ActionResult, error) {
 					Url:  dest,
 				},
 			},
+			BuildInfo: []model2.BuildInfo{
+				{
+					ImageName: a.imageName,
+				},
+			},
 			Reports: nil,
 		}
 		return &actionResult, nil
 	} else {
 		actionResult := &model2.ActionResult{
 			Artifactorys: []model2.Artifactory{},
+			BuildInfo: []model2.BuildInfo{
+				{
+					ImageName: a.imageName,
+				},
+			},
 		}
 		basePath := path2.Join(userHomeDir, consts.ArtifactoryDir, jobName, consts.ArtifactoryName, jobId)
 		os.MkdirAll(basePath, os.ModePerm)
@@ -159,10 +169,6 @@ func (a *ArtifactoryAction) Hook() (*model2.ActionResult, error) {
 				Url:  dest,
 			})
 		}
-		image := model2.BuildInfo{
-			ImageName: a.imageName,
-		}
-		actionResult.BuildInfo = append(actionResult.BuildInfo, image)
 		return actionResult, nil
 	}
 }
