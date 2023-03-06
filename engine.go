@@ -18,6 +18,7 @@ type Engine interface {
 	ExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
 	CreateJobDetail(name string) (*model.JobDetail, error)
+	RegisterStatusChangeHook(ch chan model.StatusChangeMessage)
 }
 
 type Role int
@@ -114,4 +115,11 @@ func (e *engine) GetJobHistory(name string, id int) (*model.JobDetail, error) {
 
 func (e *engine) CreateJobDetail(name string) (*model.JobDetail, error) {
 	return jober.CreateJobDetail(name)
+}
+
+func (e *engine) RegisterStatusChangeHook(ch chan model.StatusChangeMessage) {
+	if e.role != RoleMaster {
+		return
+	}
+	e.master.registerStatusChangeHook(ch)
 }

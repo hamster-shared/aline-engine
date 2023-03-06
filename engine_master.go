@@ -156,3 +156,8 @@ func (e *masterEngine) cancelJob(name string, id int) error {
 	e.rpcServer.SendMsgChan <- msg
 	return nil
 }
+
+func (e *masterEngine) registerStatusChangeHook(ch chan model.StatusChangeMessage) {
+	// TODO
+
+}
