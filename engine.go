@@ -17,8 +17,12 @@ type Engine interface {
 	GetCodeInfo(name string, historyId int) (string, error)
 	ExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
+	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
+	DeleteJobHistory(name string, id int) error
 	CreateJobDetail(name string) (*model.JobDetail, error)
 	RegisterStatusChangeHook(ch chan model.StatusChangeMessage)
+	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
+	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
 }
 
 type Role int
@@ -113,6 +117,10 @@ func (e *engine) GetJobHistory(name string, id int) (*model.JobDetail, error) {
 	return jober.GetJobDetail(name, id)
 }
 
+func (e *engine) DeleteJobHistory(name string, id int) error {
+	return jober.DeleteJobDetail(name, id)
+}
+
 func (e *engine) CreateJobDetail(name string) (*model.JobDetail, error) {
 	return jober.CreateJobDetail(name)
 }
@@ -122,4 +130,16 @@ func (e *engine) RegisterStatusChangeHook(ch chan model.StatusChangeMessage) {
 		return
 	}
 	e.master.registerStatusChangeHook(ch)
+}
+
+func (e *engine) GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error) {
+	return jober.JobDetailList(name, page, size)
+}
+
+func (e *engine) GetJobHistoryLog(name string, id int) (*model.JobLog, error) {
+	return jober.GetJobLog(name, id)
+}
+
+func (e *engine) GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error) {
+	return jober.GetJobStageLog(name, id, stageName, start)
 }
