@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"time"
+
 	"github.com/hamster-shared/aline-engine/dispatcher"
 	"github.com/hamster-shared/aline-engine/grpc/server"
 	jober "github.com/hamster-shared/aline-engine/job"
@@ -131,6 +133,7 @@ func (e *masterEngine) dispatchJob(name string, id int) error {
 		node, err = e.dispatch.DispatchNode()
 		if err != nil {
 			logger.Errorf("dispatch node error: %s, retry counter: %d", err.Error(), retry)
+			time.Sleep(time.Second * 3)
 			continue
 		} else {
 			break

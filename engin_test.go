@@ -105,7 +105,7 @@ func TestEngineWork(t *testing.T) {
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
-			err = e.ExecuteJob("hello-world", 1000)
+			_, err = e.ExecuteJob("hello-world")
 			if err != nil {
 				logger.Error("--------------------", err)
 			}
