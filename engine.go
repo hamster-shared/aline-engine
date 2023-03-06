@@ -16,6 +16,7 @@ type Engine interface {
 	GetJobs(keyword string, page, size int) (*model.JobPage, error)
 	GetCodeInfo(name string, historyId int) (string, error)
 	ExecuteJob(name string, id int) error
+	GetJobHistory(name string, id int) (*model.JobDetail, error)
 }
 
 type Role int
@@ -104,4 +105,8 @@ func (e *engine) CancelJob(name string, id int) error {
 		return fmt.Errorf("only master can cancel job")
 	}
 	return e.master.cancelJob(name, id)
+}
+
+func (e *engine) GetJobHistory(name string, id int) (*model.JobDetail, error) {
+	return jober.GetJobDetail(name, id)
 }
