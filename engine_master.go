@@ -161,3 +161,8 @@ func (e *masterEngine) registerStatusChangeHook(ch chan model.StatusChangeMessag
 	// TODO
 
 }
+
+func (e *masterEngine) terminalJob(name string, id int) error {
+	// TODO
+	return nil
+}

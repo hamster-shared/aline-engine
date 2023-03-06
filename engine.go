@@ -15,7 +15,8 @@ type Engine interface {
 	GetJob(name string) (*model.Job, error)
 	GetJobs(keyword string, page, size int) (*model.JobPage, error)
 	GetCodeInfo(name string, historyId int) (string, error)
-	ExecuteJob(name string, id int) error
+	ExecuteJob(name string) error
+	ReExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
 	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
 	DeleteJobHistory(name string, id int) error
@@ -99,7 +100,18 @@ func (e *engine) GetCodeInfo(name string, historyId int) (string, error) {
 	return jobDetail.CodeInfo, nil
 }
 
-func (e *engine) ExecuteJob(name string, id int) error {
+func (e *engine) ExecuteJob(name string) error {
+	if e.role != RoleMaster {
+		return fmt.Errorf("only master can execute job")
+	}
+	jobDetail, err := e.CreateJobDetail(name)
+	if err != nil {
+		return err
+	}
+	return e.master.dispatchJob(name, jobDetail.Id)
+}
+
+func (e *engine) ReExecuteJob(name string, id int) error {
 	if e.role != RoleMaster {
 		return fmt.Errorf("only master can execute job")
 	}
@@ -142,4 +154,11 @@ func (e *engine) GetJobHistoryLog(name string, id int) (*model.JobLog, error) {
 
 func (e *engine) GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error) {
 	return jober.GetJobStageLog(name, id, stageName, start)
+}
+
+func (e *engine) TerminalJob(name string, id int) error {
+	if e.role != RoleMaster {
+		return fmt.Errorf("only master can terminal job")
+	}
+	return e.master.terminalJob(name, id)
 }
