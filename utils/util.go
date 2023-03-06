@@ -2,14 +2,17 @@ package utils
 
 import (
 	"context"
-	"github.com/hamster-shared/aline-engine/consts"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
+
+	"github.com/hamster-shared/aline-engine/consts"
 )
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -106,4 +109,37 @@ func SlicePage(page, pageSize, nums int) (int, int, int, int) {
 		sliceEnd = nums
 	}
 	return page, pageSize, sliceStart, sliceEnd
+}
+
+func GetMyIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "unknown", err
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "unknown", fmt.Errorf("can not get ip")
+}
+
+func GetMyHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "unknown", err
+	}
+	return hostname, nil
+}
+
+func GetNodeKey(name, address string) string {
+	return fmt.Sprintf("%s@%s", name, address)
+}
+
+// FormatJobToString 格式化为字符串
+// return: name(id)
+func FormatJobToString(name string, id int) string {
+	return fmt.Sprintf("%s(%d)", name, id)
 }

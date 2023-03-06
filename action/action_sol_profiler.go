@@ -6,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/consts"
-	"github.com/hamster-shared/aline-engine/logger"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -18,9 +13,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
-// SolProfilerAction SolProfiler合约检查
+// SolProfilerAction SolProfiler 合约检查
 type SolProfilerAction struct {
 	path   string
 	ctx    context.Context
@@ -75,12 +76,9 @@ func (a *SolProfilerAction) Hook() (*model.ActionResult, error) {
 	}
 	for _, path := range absPathList {
 		_, file := path2.Split(path)
-		var filenameWithSuffix string
-		filenameWithSuffix = path2.Base(file)
-		var fileSuffix string
-		fileSuffix = path2.Ext(filenameWithSuffix)
-		var filenameOnly string
-		filenameOnly = strings.TrimSuffix(filenameWithSuffix, fileSuffix)
+		filenameWithSuffix := path2.Base(file)
+		fileSuffix := path2.Ext(filenameWithSuffix)
+		filenameOnly := strings.TrimSuffix(filenameWithSuffix, fileSuffix)
 
 		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
 		command := consts.SolProfilerCheck + path
@@ -131,6 +129,9 @@ func (a *SolProfilerAction) Post() error {
 		return errors.New("check result path is err")
 	}
 	fileInfos, err := open.Readdir(-1)
+	if err != nil {
+		return err
+	}
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractMethodsPropertiesReportDetails]
 	compile, err := regexp.Compile(`\[.{1,2}m`)
 	if err != nil {
@@ -182,7 +183,7 @@ func (a *SolProfilerAction) Post() error {
 			methodsPropertiesReportDetailsList = append(methodsPropertiesReportDetailsList, methodsPropertiesReportDetails)
 		}
 
-		details := model.NewContractCheckResultDetails[[]model.ContractMethodsPropertiesReportDetails](strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), 0, methodsPropertiesReportDetailsList)
+		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), 0, methodsPropertiesReportDetailsList)
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	checkResult := model.NewContractCheckResult(consts.ContractMethodsPropertiesReport.Name, consts.CheckSuccess.Result, consts.ContractMethodsPropertiesReport.Tool, checkResultDetailsList)

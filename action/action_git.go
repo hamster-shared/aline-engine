@@ -73,7 +73,7 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	//}
 
 	command := "git rev-parse --is-inside-work-tree"
-	out, err := a.ExecuteStringCommand(command)
+	_, err := a.ExecuteStringCommand(command)
 	if err != nil {
 
 		command = "git init"
@@ -85,25 +85,25 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	}
 
 	command = "git config remote.origin.url  " + a.repository
-	out, err = a.ExecuteStringCommand(command)
+	_, err = a.ExecuteStringCommand(command)
 	if err != nil {
 		return nil, err
 	}
 
 	command = "git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/*"
-	out, err = a.ExecuteStringCommand(command)
+	_, err = a.ExecuteStringCommand(command)
 	if err != nil {
 		return nil, err
 	}
 
 	command = "git config remote.origin.url " + a.repository
-	out, err = a.ExecuteStringCommand(command)
+	_, err = a.ExecuteStringCommand(command)
 	if err != nil {
 		return nil, err
 	}
 
 	command = "git fetch --tags --progress " + a.repository + " +refs/heads/*:refs/remotes/origin/*"
-	out, err = a.ExecuteStringCommand(command)
+	_, err = a.ExecuteStringCommand(command)
 	if err != nil {
 		return nil, err
 	}
@@ -115,16 +115,16 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	}
 
 	command = "git config core.sparsecheckout "
-	out, _ = a.ExecuteStringCommand(command)
+	_, _ = a.ExecuteStringCommand(command)
 
 	command = fmt.Sprintf("git checkout -f %s", commitId)
-	out, err = a.ExecuteStringCommand(command)
+	_, err = a.ExecuteStringCommand(command)
 	if err != nil {
 		return nil, err
 	}
 
 	command = "git branch -a -v --no-abbrev"
-	out, err = a.ExecuteCommandDirect(strings.Fields(command))
+	out, err := a.ExecuteCommandDirect(strings.Fields(command))
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +226,6 @@ func (a *GitAction) ExecuteCommand(commands []string) (string, error) {
 	if err != nil {
 		logger.Errorf("shell command wait error: %v", err)
 		return "nil", err
-	}
-	if err != nil {
-		a.output.WriteLine(err.Error())
 	}
 
 	defer stdout.Close()

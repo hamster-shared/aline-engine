@@ -8,46 +8,30 @@ const (
 )
 
 type QueueMessage struct {
-	JobName string
-	JobId   int
-	Command Command
-	Node    *Node
+	JobName    string
+	JobId      int
+	JobContent string
+	Command    Command
 }
 
-func NewStartQueueMsg(name string, id int) QueueMessage {
-	return QueueMessage{
-		JobName: name,
-		JobId:   id,
-		Command: Command_Start,
+func NewStartQueueMsg(name, content string, id int) *QueueMessage {
+	return &QueueMessage{
+		JobName:    name,
+		JobId:      id,
+		JobContent: content,
+		Command:    Command_Start,
 	}
 
 }
 
-func NewStopQueueMsg(name string, id int) QueueMessage {
-	return QueueMessage{
-		JobName: name,
-		JobId:   id,
-		Command: Command_Stop,
+func NewStopQueueMsg(name, content string, id int) *QueueMessage {
+	return &QueueMessage{
+		JobName:    name,
+		JobId:      id,
+		JobContent: content,
+		Command:    Command_Stop,
 	}
 
-}
-
-func NewStartQueueMsgToNode(name string, id int, node *Node) QueueMessage {
-	return QueueMessage{
-		JobName: name,
-		JobId:   id,
-		Command: Command_Start,
-		Node:    node,
-	}
-}
-
-func NewStopQueueMsgToNode(name string, id int, node *Node) QueueMessage {
-	return QueueMessage{
-		JobName: name,
-		JobId:   id,
-		Command: Command_Stop,
-		Node:    node,
-	}
 }
 
 type StatusChangeMessage struct {

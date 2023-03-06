@@ -6,20 +6,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/consts"
-	"github.com/hamster-shared/aline-engine/logger"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
 	"os/exec"
 	path2 "path"
 	"strconv"
 	"strings"
+
+	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
-// SolHintAction SolHint合约检查
+// SolHintAction SolHint 合约检查
 type SolHintAction struct {
 	path   string
 	ctx    context.Context
@@ -138,6 +139,9 @@ func (a *SolHintAction) Post() error {
 		return errors.New("check result path is err")
 	}
 	fileInfos, err := open.Readdir(-1)
+	if err != nil {
+		return err
+	}
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails]
 	successFlag := true
 	for _, info := range fileInfos {
@@ -165,7 +169,7 @@ func (a *SolHintAction) Post() error {
 			}
 		}
 
-		details := model.NewContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails](strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	var result string

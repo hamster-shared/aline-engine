@@ -28,12 +28,3 @@ func TestLogger(t *testing.T) {
 	Error("info")
 	Errorf("info %s", "hello")
 }
-
-func TestToMemory(t *testing.T) {
-	Init().ToMemory().SetLevel(logrus.TraceLevel)
-	Trace("hello")
-	mem := Buffer()
-	if mem.Len() == 0 {
-		t.Fatal("error")
-	}
-}

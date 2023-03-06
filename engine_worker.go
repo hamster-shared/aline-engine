@@ -2,145 +2,151 @@ package engine
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/hamster-shared/aline-engine/dispatcher"
 	"github.com/hamster-shared/aline-engine/executor"
-	"github.com/hamster-shared/aline-engine/job"
+	"github.com/hamster-shared/aline-engine/grpc/api"
+	grpcClient "github.com/hamster-shared/aline-engine/grpc/client"
+	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type workerEngine struct {
-	jober         job.Jober
+	name, address string
+	masterAddress string
 	executeClient *executor.ExecutorClient
+	rpcClient     *grpcClient.AlineGrpcClient
+	doneJobList   sync.Map
 }
 
-func newWorkerEngine() *workerEngine {
+func newWorkerEngine(masterAddress string) (*workerEngine, error) {
 	e := &workerEngine{}
-	channel := make(chan model.QueueMessage)
-	callbackChannel := make(chan model.StatusChangeMessage)
-	jobService := job.NewJober()
-	executeClient := executor.NewExecutorClient(channel, callbackChannel, jobService)
-	e.jober = jobService
-	e.executeClient = executeClient
-	return e
-}
+	e.name, _ = utils.GetMyHostname()
+	if masterAddress[:9] == "127.0.0.1" {
+		e.address = "127.0.0.1"
+	} else {
+		e.address, _ = utils.GetMyIP()
+	}
+	e.masterAddress = masterAddress
+	e.executeClient = executor.NewExecutorClient()
 
-func (e *workerEngine) CreateJob(name string, yaml string) error {
-	return e.jober.SaveJob(name, yaml)
-}
-
-func (e *workerEngine) SaveJobParams(name string, params map[string]string) error {
-	return e.jober.SaveJobParams(name, params)
-}
-
-func (e *workerEngine) DeleteJob(name string) error {
-	return e.jober.DeleteJob(name)
-}
-
-func (e *workerEngine) UpdateJob(name, newName, jobYaml string) error {
-
-	return e.jober.UpdateJob(name, newName, jobYaml)
-}
-
-func (e *workerEngine) GetJob(name string) *model.Job {
-	return e.jober.GetJobObject(name)
-}
-
-func (e *workerEngine) GetJobs(keyword string, page int, size int) *model.JobPage {
-	return e.jober.JobList(keyword, page, size)
-}
-
-func (e *workerEngine) ExecuteJob(name string) (*model.JobDetail, error) {
-	logger.Debugf("execute job:%s", name)
-
-	job := e.jober.GetJobObject(name)
-	jobDetail, err := e.jober.ExecuteJob(name)
+	rpcClient, err := grpcClient.GrpcClientStart(masterAddress)
 	if err != nil {
 		return nil, err
 	}
+	e.rpcClient = rpcClient
 
-	return jobDetail, nil
+	e.handleGrpcMessage()
+	e.register()
+	e.keepAlive()
+
+	e.executeClient.Main()
+	e.handleDoneJob()
+
+	return e, nil
 }
 
-func (e *workerEngine) ReExecuteJob(name string, historyId int) error {
-	err := e.jober.ReExecuteJob(name, historyId)
+// 处理 grpc client 收到的消息，这里只处理与任务执行有关的消息
+func (e *workerEngine) handleGrpcMessage() {
+	logger.Debug("worker engine start handle grpc message")
+	// 接收消息
+	go func() {
+		for {
+			// 这里只需要处理与任务执行有关的消息
+			switch msg := <-e.rpcClient.RecvMsgChan; msg.Type {
+			case 4:
+				// 接收到 master 节点的执行任务
+				logger.Tracef("worker engine receive execute job message: %v", msg)
+				e.executeClient.QueueChan <- model.NewStartQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
+				e.sendLog(msg)
+
+			case 5:
+				// 4. 接收到 master 节点的取消任务
+				logger.Tracef("worker engine receive cancel job message: %v", msg)
+				e.executeClient.QueueChan <- model.NewStopQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
+			case 6:
+			case 7:
+			}
+		}
+	}()
+}
+
+// 向 master 注册自己
+func (e *workerEngine) register() {
+	e.rpcClient.SendMsgChan <- &api.AlineMessage{
+		Type:    1,
+		Name:    e.name,
+		Address: e.address,
+	}
+	logger.Trace("worker engine register success")
+}
+
+// 向 master 定时发送心跳
+func (e *workerEngine) keepAlive() {
+	go func() {
+		for {
+			time.Sleep(time.Second * 30)
+			e.rpcClient.SendMsgChan <- &api.AlineMessage{
+				Type:    3,
+				Name:    e.name,
+				Address: e.address,
+			}
+			logger.Trace("worker engine send ping message")
+			logger.Tracef("length of send message channel: %d", len(e.rpcClient.SendMsgChan))
+		}
+	}()
+}
+
+func (e *workerEngine) handleDoneJob() {
+	go func() {
+		for {
+			doneJob := <-e.executeClient.DoneJobChan
+			e.doneJobList.Store(utils.FormatJobToString(doneJob.Name, doneJob.ID), struct{}{})
+		}
+	}()
+}
+
+// 回传日志
+func (e *workerEngine) sendLog(msg *api.AlineMessage) {
+	go func() {
+		for {
+			logMsg, err := getLogMsg(msg)
+			if err != nil {
+				return
+			}
+			e.rpcClient.SendMsgChan <- logMsg
+
+			// 检查是否已经完成
+			doneJobKey := utils.FormatJobToString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+			if _, ok := e.doneJobList.Load(doneJobKey); ok {
+				e.doneJobList.Delete(doneJobKey)
+				// 任务完成后再传一次，免得日志不完整
+				logMsg, _ := getLogMsg(msg)
+				e.rpcClient.SendMsgChan <- logMsg
+				return
+			}
+
+			// 0.5s 发送一次日志
+			time.Sleep(time.Millisecond * 500)
+		}
+	}()
+}
+
+func getLogMsg(msg *api.AlineMessage) (*api.AlineMessage, error) {
+	logString, err := jober.GetJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
 	if err != nil {
-		logger.Error(fmt.Sprintf("re execute job error:%s", err.Error()))
-		return err
+		logger.Errorf("get job log string error: %v", err)
+		return nil, fmt.Errorf("get job log string error: %v", err)
+	} else {
+		return &api.AlineMessage{
+			Type:    7,
+			Name:    msg.Name,
+			Address: msg.Address,
+			ExecReq: msg.ExecReq,
+			Log:     logString,
+		}, nil
 	}
-	job := e.jober.GetJobObject(name)
-	jobDetail := e.jober.GetJobDetail(name, historyId)
-	node, err := e.dispatch.DispatchNode(job)
-	if err != nil {
-		logger.Error(fmt.Sprintf("dispatch node error:%s", err.Error()))
-		return err
-	}
-	e.dispatch.SendJob(jobDetail, node)
-	return err
 }
-
-func (e *workerEngine) TerminalJob(name string, historyId int) error {
-
-	err := e.jober.StopJobDetail(name, historyId)
-	if err != nil {
-		return err
-	}
-	job := e.jober.GetJobObject(name)
-	jobDetail := e.jober.GetJobDetail(name, historyId)
-	node, err := e.dispatch.DispatchNode(job)
-	if err != nil {
-		logger.Error(fmt.Sprintf("dispatch node error:%s", err.Error()))
-		return err
-	}
-	e.dispatch.CancelJob(jobDetail, node)
-	return nil
-}
-
-func (e *workerEngine) GetJobHistory(name string, historyId int) *model.JobDetail {
-	return e.jober.GetJobDetail(name, historyId)
-}
-
-func (e *workerEngine) GetJobHistorys(name string, page, size int) *model.JobDetailPage {
-	return e.jober.JobDetailList(name, page, size)
-}
-
-func (e *workerEngine) DeleteJobHistory(name string, historyId int) error {
-	return e.jober.DeleteJobDetail(name, historyId)
-}
-
-func (e *workerEngine) GetJobHistoryLog(name string, historyId int) *model.JobLog {
-	return e.jober.GetJobLog(name, historyId)
-}
-
-func (e *workerEngine) GetJobHistoryStageLog(name string, historyId int, stageName string, start int) *model.JobStageLog {
-	return e.jober.GetJobStageLog(name, historyId, stageName, start)
-}
-
-func (e *workerEngine) GetCodeInfo(name string, historyId int) string {
-	jobDetail := e.jober.GetJobDetail(name, historyId)
-	if jobDetail != nil {
-		return jobDetail.CodeInfo
-	}
-	return ""
-}
-
-// func (e *workerEngine) RegisterStatusChangeHook(hookResult func(message model.StatusChangeMessage)) {
-// 	for { //
-
-// 		//3. 监听队列
-// 		statusMsg, ok := <-e.callbackChannel
-// 		if !ok {
-// 			return
-// 		}
-
-// 		fmt.Println("=======[status callback]=========")
-// 		fmt.Println(statusMsg)
-// 		fmt.Println("=======[status callback]=========")
-
-// 		if hookResult != nil {
-// 			hookResult(statusMsg)
-// 		}
-// 	}
-// }

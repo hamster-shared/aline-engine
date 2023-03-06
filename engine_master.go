@@ -1,40 +1,40 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/hamster-shared/aline-engine/dispatcher"
-	"github.com/hamster-shared/aline-engine/grpc/api"
 	"github.com/hamster-shared/aline-engine/grpc/server"
+	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 )
 
 type masterEngine struct {
-	dispatch    dispatcher.IDispatcher
-	msgChanRecv chan *api.AlineMessage
-	msgChanSend chan *api.AlineMessage
-	*workerEngine
+	dispatch  dispatcher.IDispatcher
+	rpcServer *server.AlineGrpcServer
 }
 
-func newMasterEngine(listenAddress string) *masterEngine {
+func newMasterEngine(listenAddress string) (*masterEngine, error) {
 	e := &masterEngine{}
-	e.msgChanRecv = make(chan *api.AlineMessage, 100)
-	e.msgChanSend = make(chan *api.AlineMessage, 100)
-	server.GrpcServerStart(listenAddress, e.msgChanRecv, e.msgChanSend)
-	dispatch := dispatcher.NewHttpDispatcher(e.msgChanRecv)
-	e.dispatch = dispatch
-	e.GrpcServerHandleMessage()
-	return e
+	rpcServer, err := server.GrpcServerStart(listenAddress)
+	if err != nil {
+		logger.Errorf("grpc server start failed: %v", err)
+		return nil, err
+	}
+
+	e.rpcServer = rpcServer
+	e.dispatch = dispatcher.NewGrpcDispatcher()
+	e.handleGrpcServerMessage()
+	e.handleGrpcServerError()
+	return e, nil
 }
 
 // GrpcServerHandleMessage Master 节点处理 grpc server 收到的消息的地方
-func (e *masterEngine) GrpcServerHandleMessage() {
+func (e *masterEngine) handleGrpcServerMessage() {
 	// 这个用来接收 grpc server 收到的消息
 	go func() {
 		logger.Debugf("grpc server start listen message")
 		for {
-			msg, ok := <-e.msgChanRecv
+			msg, ok := <-e.rpcServer.RecvMsgChan
 			if !ok {
 				logger.Error("grpc server message channel closed")
 				return
@@ -77,26 +77,21 @@ func (e *masterEngine) GrpcServerHandleMessage() {
 				} else {
 					logger.Tracef("node ping success: %v", msg)
 				}
-
 			case 4:
-				// 接受执行
-
+				// 这是属于 worker 节点的消息，不需要处理
 			case 5:
-				// 接受取消执行
-
-			case 6:
-				// 执行结果通知
+				// 执行状态
 
 			case 7:
-				// 执行日志
-			case 8:
-				// 收到了任务
-				receivedInfo := dispatcher.ReceivedInfo{
-					AlineMessageType: int(msg.ReceivedType),
-					Node:             fmt.Sprintf("%s@%s", msg.Name, msg.Address),
-					JobName:          msg.ReceivedName,
+				// 接收到任务的执行日志，保存起来
+				// 如果是本机 worker 节点的日志，就不需要保存了
+				if msg.Address == "127.0.0.1" {
+					break
 				}
-				e.dispatch.Received(receivedInfo)
+				err := jober.SaveJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), msg.Log)
+				if err != nil {
+					logger.Errorf("save job log error: %v", err)
+				}
 
 			default:
 				logger.Warnf("grpc server recv unknown message: %v", msg)
@@ -105,33 +100,59 @@ func (e *masterEngine) GrpcServerHandleMessage() {
 	}()
 }
 
-// DispatchJob 分发任务
-func (e *masterEngine) DispatchJob() {
-	node, err := e.dispatch.DispatchNode()
-	if err != nil {
-		logger.Errorf("dispatch node error:%s", err.Error())
-		return nil, err
-	}
-	yamlString := e.jober.GetJob(name)
-	// 发送 job，如果收不到响应，就重试，10 次不成功，就放弃
-	e.dispatch.SendJob(name, yamlString, node)
-	receivedInfo := dispatcher.ReceivedInfo{
-		AlineMessageType: 4,
-		Node:             fmt.Sprintf("%s@%s", node.Name, node.Address),
-		JobName:          name,
-	}
-	for i := 0; i < 10; i++ {
-		if i == 9 {
-			logger.Errorf("send job to node:%s failed, already retry 10 times", node)
-			return nil, fmt.Errorf("send job to node:%s failed, already retry 10 times", node)
+func (e *masterEngine) handleGrpcServerError() {
+	go func() {
+		for {
+			err, ok := <-e.rpcServer.ErrorChan
+			if !ok {
+				logger.Error("grpc server error channel closed")
+				return
+			}
+			switch err := err.(type) {
+			// 如果是发送任务出错，就重新分发任务
+			case *model.SendJobError:
+				logger.Tracef("grpc server send job error: %v", err)
+				// 删掉出错的节点
+				e.dispatch.UnRegisterWithKey(err.ErrorNode)
+				// 重新分发任务
+				e.dispatchJob(err.JobName, err.JobID)
+			default:
+				logger.Errorf("grpc server error: %v", err)
+			}
 		}
-		if e.dispatch.IsReceived(receivedInfo) {
-			logger.Tracef("send job to node:%s success", node)
-			break
+	}()
+}
+
+// dispatchJob 分发任务
+func (e *masterEngine) dispatchJob(name string, id int) error {
+	var node *model.Node
+	var err error
+	for retry := 0; retry < 3; retry++ {
+		node, err = e.dispatch.DispatchNode()
+		if err != nil {
+			logger.Errorf("dispatch node error: %s, retry counter: %d", err.Error(), retry)
+			continue
 		} else {
-			logger.Warnf("send job failed, retry %d", i)
-			e.dispatch.SendJob(jobDetail, node)
-			time.Sleep(1 * time.Second)
+			break
 		}
 	}
+	if err != nil {
+		return err
+	}
+	jobYamlString, err := jober.GetJob(name)
+	if err != nil {
+		return err
+	}
+	e.rpcServer.SendMsgChan <- e.dispatch.SendJob(name, jobYamlString, id, node)
+	return nil
+}
+
+// 取消任务
+func (e *masterEngine) cancelJob(name string, id int) error {
+	msg, err := e.dispatch.CancelJob(name, id)
+	if err != nil {
+		return err
+	}
+	e.rpcServer.SendMsgChan <- msg
+	return nil
 }

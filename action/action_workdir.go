@@ -3,10 +3,11 @@ package action
 import (
 	"context"
 	"fmt"
-	model2 "github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
 	"os"
 	"strings"
+
+	model2 "github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
 )
 
 type WorkdirAction struct {
@@ -23,7 +24,7 @@ func NewWorkdirAction(step model2.Step, ctx context.Context, output *output.Outp
 	if ok {
 		workdir = envRender(workdir, append(env, os.Environ()...))
 	} else {
-		workdir = envRender(workdir, append(os.Environ()))
+		workdir = envRender(workdir, os.Environ())
 	}
 
 	return &WorkdirAction{
@@ -69,7 +70,7 @@ func (a *WorkdirAction) Hook() (*model2.ActionResult, error) {
 	return nil, nil
 }
 
-// Post 执行后清理 (无论执行是否成功，都应该有Post的清理)
+// Post 执行后清理 (无论执行是否成功，都应该有 Post 的清理)
 func (a *WorkdirAction) Post() error {
 	return nil
 }

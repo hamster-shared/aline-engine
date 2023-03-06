@@ -51,7 +51,7 @@ type JobDetail struct {
 	Duration     int64         `json:"duration"`
 	ActionResult `yaml:"actionResult" json:"actionResult"`
 	Output       *output.Output `json:"output"`
-	Error        string         `yaml:"error,omitempty"json:"error"`
+	Error        string         `yaml:"error,omitempty" json:"error"`
 }
 
 func (jd *JobDetail) ToString() string {
@@ -185,3 +185,8 @@ func (s JobVoTimeDecrement) Len() int { return len(s) }
 func (s JobVoTimeDecrement) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 func (s JobVoTimeDecrement) Less(i, j int) bool { return s[i].CreateTime.After(s[j].CreateTime) }
+
+type DoneJob struct {
+	Name string
+	ID   int
+}

@@ -72,7 +72,7 @@ func (a *SlitherAction) Hook() (*model.ActionResult, error) {
 	for _, path := range absPathList {
 		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
 		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
-		err, redundantPath := utils.GetRedundantPath(basePath, path)
+		redundantPath, err := utils.GetRedundantPath(basePath, path)
 		if err != nil {
 			return nil, err
 		}

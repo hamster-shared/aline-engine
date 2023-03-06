@@ -19,7 +19,7 @@ message AlineMessage {
   // 5: cancel 服务端发的取消执行命令
   // 6: executeResultNotify 客户端发的执行结果通知
   // 7: log 客户端发的日志
-  // 8: received 客户端发的收到任务通知
+  // 8: 错误
   int64 type = 1;
 
   // registry
@@ -32,11 +32,9 @@ message AlineMessage {
   string result = 5;
 
   // log
-  Log log = 6;
+  string log = 6;
 
-  // 表示收到了服务器派发的任务
-  int64 receivedType = 7;
-  string receivedName = 8;
+  string error = 7;
 }
 
 message ExecuteReq {
@@ -54,8 +52,8 @@ message ExecuteResult {
   int64 duration = 3;
 }
 
-message Log {
-  string stage = 1;
-  string content = 2;
-  bool more = 3;
-}
+// message Log {
+//   string stage = 1;
+//   string content = 2;
+//   bool more = 3;
+// }

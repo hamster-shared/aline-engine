@@ -48,7 +48,7 @@ func (a *PinataIpfsAction) Hook() (*model.ActionResult, error) {
 	path := path2.Join(workdir, a.path)
 	fi, err := os.Stat(path)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("get path fail, err is  %s", err.Error()))
+		return nil, fmt.Errorf("get path fail, err is  %s", err)
 	}
 	isDir := fi.IsDir()
 	var dstPath string

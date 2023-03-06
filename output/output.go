@@ -104,15 +104,6 @@ func (o *Output) StageDuration(name string) time.Duration {
 	return time.Since(stageTimeConsuming.StartTime)
 }
 
-// StageTimeConsuming 将阶段的时间信息暴露出去，便于外部查看详情
-func (o *Output) StageTimeConsuming(name string) (TimeConsuming, error) {
-	timeConsuming, ok := o.stageTimeConsuming[name]
-	if !ok {
-		return TimeConsuming{}, fmt.Errorf("stage %s not found", name)
-	}
-	return timeConsuming, nil
-}
-
 // Done 标记输出已完成，会将缓存中的内容刷入文件，然后关闭文件
 func (o *Output) Done() {
 	logger.Trace("output done, flush all, close file")
@@ -196,7 +187,7 @@ func (o *Output) NewStage(name string) {
 	}
 }
 
-// NewStage 会写入以 [Pipeline] Stage: 开头的一行，表示一个新的 Stage 开始
+// NewStep 会写入以 [Pipeline] Stage: 开头的一行，表示一个新的 Stage 开始
 func (o *Output) NewStep(name string) {
 
 	// 将之前的 Stage 标记为完成
@@ -289,6 +280,7 @@ func (o *Output) initFile() error {
 	}
 	o.f = f
 	o.mu.Unlock()
+	logger.Tracef("Create output log file %s success\n", o.filename)
 	return nil
 }
 

@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
-	shell "github.com/ipfs/go-ipfs-api"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
+	shell "github.com/ipfs/go-ipfs-api"
 )
 
 // IpfsAction Upload files/directories to ipfs
@@ -87,13 +89,13 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
 				if err != nil {
-
+					logger.Error(err)
 				}
 			}(res.Body)
 			defer func(f *os.File) {
 				err := f.Close()
 				if err != nil {
-
+					logger.Error(err)
 				}
 			}(f)
 			a.output.WriteLine("download artifacts success")
@@ -105,7 +107,7 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 			defer func(f *os.File) {
 				err := f.Close()
 				if err != nil {
-
+					logger.Error(err)
 				}
 			}(f)
 			if err != nil {
@@ -116,7 +118,7 @@ func (a *IpfsAction) Hook() (*model.ActionResult, error) {
 			defer func(src *os.File) {
 				err := src.Close()
 				if err != nil {
-
+					logger.Error(err)
 				}
 			}(src)
 			if err != nil {

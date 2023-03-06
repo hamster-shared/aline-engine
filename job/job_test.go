@@ -5,16 +5,18 @@ import (
 	"os/exec"
 	"testing"
 
-	model2 "github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
-	ass "gotest.tools/v3/assert"
 )
 
 func Test_SaveJob(t *testing.T) {
-	step1 := model2.Step{
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	step1 := model.Step{
 		Name: "sun",
 		Uses: "",
 		With: map[string]string{
@@ -24,28 +26,28 @@ func Test_SaveJob(t *testing.T) {
 		RunsOn: "open",
 		Run:    "stage",
 	}
-	var steps []model2.Step
+	var steps []model.Step
 	var strs []string
 	strs = append(strs, "strings")
 	steps = append(steps, step1)
-	job := model2.Job{
+	job := model.Job{
 		Version: "1",
 		Name:    "mysql",
-		Stages: map[string]model2.Stage{
+		Stages: map[string]model.Stage{
 			"node": {
 				Steps: steps,
 				Needs: strs,
 			},
 		},
 	}
-	jobService := NewJober()
 	data, _ := yaml.Marshal(job)
-	err := jobService.SaveJob("qiao", string(data))
-	ass.NilError(t, err)
+	err := SaveJob("jian1", string(data))
+	assert.NoError(t, err)
 }
 
 func Test_SaveJobDetail(t *testing.T) {
-	step1 := model2.Step{
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	step1 := model.Step{
 		Name: "sun",
 		Uses: "",
 		With: map[string]string{
@@ -55,49 +57,49 @@ func Test_SaveJobDetail(t *testing.T) {
 		RunsOn: "open",
 		Run:    "stage",
 	}
-	var steps []model2.Step
+	var steps []model.Step
 	var strs []string
 	strs = append(strs, "strings")
 	steps = append(steps, step1)
-	stageDetail := model2.StageDetail{
+	stageDetail := model.StageDetail{
 		Name: "string",
-		Stage: model2.Stage{
+		Stage: model.Stage{
 			Steps: steps,
 			Needs: strs,
 		},
-		Status: model2.STATUS_FAIL,
+		Status: model.STATUS_FAIL,
 	}
-	var stageDetails []model2.StageDetail
+	var stageDetails []model.StageDetail
 	stageDetails = append(stageDetails, stageDetail)
-	jobDetail := model2.JobDetail{
+	jobDetail := model.JobDetail{
 		Id: 6,
-		Job: model2.Job{
+		Job: model.Job{
 			Version: "2",
 			Name:    "mysql",
-			Stages: map[string]model2.Stage{
+			Stages: map[string]model.Stage{
 				"node": {
 					Steps: steps,
 					Needs: strs,
 				},
 			},
 		},
-		Status: model2.STATUS_NOTRUN,
+		Status: model.STATUS_NOTRUN,
 		Stages: stageDetails,
 	}
-	jobService := NewJober()
-	jobService.SaveJobDetail("sun", &jobDetail)
+	SaveJobDetail("sun", &jobDetail)
 }
 
 func Test_GetJob(t *testing.T) {
-	jobService := NewJober()
-	data := jobService.GetJob("guo")
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	data, err := GetJob("qiao")
+	assert.Nil(t, err)
 	log.Println(data)
 	assert.NotNil(t, data)
 }
 
 func Test_UpdateJob(t *testing.T) {
-	jobService := NewJober()
-	step1 := model2.Step{
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	step1 := model.Step{
 		Name: "jian",
 		Uses: "",
 		With: map[string]string{
@@ -107,14 +109,14 @@ func Test_UpdateJob(t *testing.T) {
 		RunsOn: "open",
 		Run:    "stage",
 	}
-	var steps []model2.Step
+	var steps []model.Step
 	var strs []string
 	strs = append(strs, "strings")
 	steps = append(steps, step1)
-	job := model2.Job{
+	job := model.Job{
 		Version: "1",
 		Name:    "mysql",
-		Stages: map[string]model2.Stage{
+		Stages: map[string]model.Stage{
 			"node": {
 				Steps: steps,
 				Needs: strs,
@@ -122,49 +124,55 @@ func Test_UpdateJob(t *testing.T) {
 		},
 	}
 	data, _ := yaml.Marshal(job)
-	err := jobService.UpdateJob("guo", "jian", string(data))
-	ass.NilError(t, err)
+	err := UpdateJob("jian", "jian1", string(data))
+	assert.NoError(t, err)
 }
 
 func Test_GetJobDetail(t *testing.T) {
-	jobService := NewJober()
-	data := jobService.GetJobDetail("sun", 3)
-	assert.NotNil(t, data)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	_, err := GetJobDetail("test1", 1)
+	assert.Nil(t, err)
 }
 
 func Test_DeleteJob(t *testing.T) {
-	jobService := NewJober()
-	err := jobService.DeleteJob("sun")
-	ass.NilError(t, err)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	err := DeleteJob("jian1")
+	assert.NoError(t, err)
 }
 
 func Test_DeleteJobDetail(t *testing.T) {
-	jobService := NewJober()
-	err := jobService.DeleteJobDetail("cdqadqa92d3if4r9n8j0", 1)
-	ass.NilError(t, err)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	err := DeleteJobDetail("test1", 1)
+	assert.NoError(t, err)
 }
 
 func Test_JobList(t *testing.T) {
-	jobService := NewJober()
-	data := jobService.JobList("cdqadqa92d3if4r9n8j0", 1, 10)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	data, err := JobList("s", 1, 10)
+	assert.Nil(t, err)
 	assert.NotNil(t, data)
+	t.Log(spew.Sdump(data))
 }
 
 func Test_JobDetailList(t *testing.T) {
-	jobService := NewJober()
-	data := jobService.JobDetailList("sun", 2, 10)
-	log.Println(data)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	data, err := JobDetailList("hello-world", 2, 10)
+	assert.Nil(t, err)
 	assert.NotNil(t, data)
+	t.Log(spew.Sdump(data))
 }
 
-func Test_ExecuteJob(t *testing.T) {
-	jobService := NewJober()
-	jobService.ExecuteJob("sun")
+func Test_CreateJobDetail(t *testing.T) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	detail, err := CreateJobDetail("hello-world")
+	assert.Nil(t, err)
+	t.Log(spew.Sdump(detail))
 }
 
 func TestGetJobLog(t *testing.T) {
-	jobService := NewJober()
-	log := jobService.GetJobLog("test", 10001)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	log, err := GetJobLog("hello-world", 1000)
+	assert.Nil(t, err)
 	if log == nil {
 		t.Error("log is nil")
 	}
@@ -172,8 +180,9 @@ func TestGetJobLog(t *testing.T) {
 }
 
 func TestGetStageLog(t *testing.T) {
-	jobService := NewJober()
-	log := jobService.GetJobStageLog("maven", 11, "code-compile", 0)
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	log, err := GetJobStageLog("hello-world", 100, "say-hello", 0)
+	assert.Nil(t, err)
 	if log == nil {
 		t.Error("log is nil")
 	}
@@ -181,6 +190,7 @@ func TestGetStageLog(t *testing.T) {
 }
 
 func TestOpenFile(t *testing.T) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
 	cmd := exec.Command("open", "/Users/sunjianguo/Desktop/miner")
 	err := cmd.Run()
 	if err != nil {

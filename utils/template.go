@@ -7,7 +7,7 @@ import (
 
 // ReplaceWithParam 参数替换
 func ReplaceWithParam(content string, paramMap map[string]string) string {
-	compileRegex := regexp.MustCompile("\\${{.*?}}")
+	compileRegex := regexp.MustCompile(`\${{.*?}}`)
 	matchArr := compileRegex.FindStringSubmatch(content)
 
 	result := strings.Clone(content)

@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hamster-shared/aline-engine/executor"
 	"github.com/hamster-shared/aline-engine/grpc/api"
-	"github.com/hamster-shared/aline-engine/grpc/server"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type IDispatcher interface {
@@ -20,97 +19,24 @@ type IDispatcher interface {
 	Register(node *model.Node) error
 	// UnRegister 节点注销
 	UnRegister(node *model.Node) error
-	// Ping
+	UnRegisterWithKey(key string) error
+	// Ping 节点 ping
 	Ping(node *model.Node) error
-
-	// HealthcheckNode 节点心跳
+	// HealthcheckNode 检查节点心跳
 	HealthcheckNode(node *model.Node)
-
 	// SendJob 发送任务
-	SendJob(name, yameString string, jobDetailID int, node *model.Node)
-
+	SendJob(name, yamlString string, jobDetailID int, node *model.Node) *api.AlineMessage
 	// CancelJob 取消任务
-	CancelJob(job *model.JobDetail, node *model.Node)
-
-	// GetExecutor 根据节点获取执行器
-	// TODO ... 这个方法设计的不好，分布式机构后应当用 api 代替
-	GetExecutor(node *model.Node) executor.IExecutor
-	Received(ReceivedInfo)
-	IsReceived(ReceivedInfo) bool
+	CancelJob(name string, jobDetailID int) (*api.AlineMessage, error)
+	// CancelJobWithNode 通过指定节点取消任务
+	CancelJobWithNode(name string, jobDetailID int, node *model.Node) *api.AlineMessage
 }
 
-type Dispatcher struct {
-	Channel         chan model.QueueMessage
-	CallbackChannel chan model.StatusChangeMessage
-	nodes           []*model.Node
-}
-
-func NewDispatcher(channel chan model.QueueMessage, callbackChannel chan model.StatusChangeMessage) *Dispatcher {
-	return &Dispatcher{
-		Channel:         channel,
-		CallbackChannel: callbackChannel,
-		nodes:           make([]*model.Node, 0),
-	}
-}
-
-// DispatchNode 选择节点
-func (d *Dispatcher) DispatchNode(job *model.Job) *model.Node {
-
-	//TODO ... 单机情况直接返回 本地
-	if len(d.nodes) > 0 {
-		return d.nodes[0]
-	}
-	return nil
-}
-
-// Register 节点注册
-func (d *Dispatcher) Register(node *model.Node) {
-	d.nodes = append(d.nodes, node)
-	return
-}
-
-// UnRegister 节点注销
-func (d *Dispatcher) UnRegister(node *model.Node) {
-	return
-}
-
-// HealthcheckNode 节点心跳
-func (d *Dispatcher) HealthcheckNode(*model.Node) {
-	// TODO  ... 检查注册的心跳信息，超过 3 分钟没有更新的节点，踢掉
-	return
-}
-
-// SendJob 发送任务
-func (d *Dispatcher) SendJob(job *model.JobDetail, node *model.Node) {
-
-	// TODO ... 单机情况下 不考虑节点，直接发送本地
-	// TODO ... 集群情况下 通过注册的 ip 地址进行 api 接口调用
-
-	d.Channel <- model.NewStartQueueMsg(job.Name, job.Id)
-
-	return
-}
-
-// CancelJob 取消任务
-func (d *Dispatcher) CancelJob(job *model.JobDetail, node *model.Node) {
-
-	d.Channel <- model.NewStopQueueMsg(job.Name, job.Id)
-	return
-}
-
-// GetExecutor 根据节点获取执行器
-// TODO ... 这个方法设计的不好，分布式机构后应当用 api 代替
-func (d *Dispatcher) GetExecutor(node *model.Node) executor.IExecutor {
-	return nil
-}
-
-type HttpDispatcher struct {
-	// Channel         chan model.QueueMessage
-	// CallbackChannel chan model.StatusChangeMessage
-	msgChan     chan *api.AlineMessage
-	nodes       sync.Map // key: node.Name + "@" + node.Address, value: NodeInfo
-	poller      *Poller
-	receivedMap sync.Map
+type GrpcDispatcher struct {
+	nodes      sync.Map // key: node.Name + "@" + node.Address, value: NodeInfo // 记录有哪些节点
+	poller     *Poller  // 轮询器，用来选择节点
+	mu         sync.Mutex
+	JobNodeMap sync.Map // key: jobname(id), value: []*node // 记录任务和节点的对应关系，用来取消任务，value 是一个数组，用来记录任务在哪些节点上执行过
 }
 
 type NodeInfo struct {
@@ -124,9 +50,8 @@ type Poller struct {
 	keyList []string
 }
 
-func NewHttpDispatcher(msgChan chan *api.AlineMessage) IDispatcher {
-	return &HttpDispatcher{
-		msgChan: msgChan,
+func NewGrpcDispatcher() IDispatcher {
+	return &GrpcDispatcher{
 		poller: &Poller{
 			index:   0,
 			keyList: make([]string, 0),
@@ -135,38 +60,65 @@ func NewHttpDispatcher(msgChan chan *api.AlineMessage) IDispatcher {
 }
 
 // DispatchNode 选择节点
-func (d *HttpDispatcher) DispatchNode() (*model.Node, error) {
+func (d *GrpcDispatcher) DispatchNode() (*model.Node, error) {
+	// 加锁，防止多个 goroutine 同时修改 poller.index
+	d.mu.Lock()
 	if len(d.poller.keyList) == 0 {
-		return nil, errors.New("no node available")
+		d.mu.Unlock()
+		return nil, errors.New("no node available, len key list is 0")
 	}
 	key := d.poller.keyList[d.poller.index]
 	d.poller.index = (d.poller.index + 1) % int64(len(d.poller.keyList))
+	d.mu.Unlock()
 	if value, ok := d.nodes.Load(key); ok {
 		return value.(NodeInfo).node, nil
 	}
+	logger.Errorf("DispatchNode failed, node not exists: %s, index is %d", key, d.poller.index)
+	logger.Tracef("list: %v", d.poller.keyList)
 	return nil, errors.New("no node available")
 }
 
 // Register 节点注册
-func (d *HttpDispatcher) Register(node *model.Node) error {
-	key := node.Name + "@" + node.Address
+func (d *GrpcDispatcher) Register(node *model.Node) error {
+	key := utils.GetNodeKey(node.Name, node.Address)
 	if _, ok := d.nodes.Load(key); !ok {
 		d.nodes.Store(key, NodeInfo{
 			node:         node,
 			lastPingTime: time.Now().Unix(),
 		})
+		d.mu.Lock()
 		d.poller.keyList = append(d.poller.keyList, key)
+		d.mu.Unlock()
+		// 看看现在有几个节点
+		logger.Tracef("Register node: %s, now have %d nodes", key, len(d.poller.keyList))
 		return nil
 	}
+	logger.Tracef("Register node failed, node already exists: %s, now have %d nodes", key, len(d.poller.keyList))
 	return errors.New("node already exists")
 }
 
 // UnRegister 节点注销
-func (d *HttpDispatcher) UnRegister(node *model.Node) error {
-	key := node.Name + "@" + node.Address
+func (d *GrpcDispatcher) UnRegister(node *model.Node) error {
+	key := utils.GetNodeKey(node.Name, node.Address)
+	return d.unRegister(key)
+}
+
+func (d *GrpcDispatcher) UnRegisterWithKey(key string) error {
+	return d.unRegister(key)
+}
+
+func (d *GrpcDispatcher) unRegister(key string) error {
 	if _, ok := d.nodes.Load(key); ok {
 		d.nodes.Delete(key)
-		d.poller.keyList = append(d.poller.keyList[:d.poller.index], d.poller.keyList[d.poller.index+1:]...)
+		d.mu.Lock()
+		if d.poller.index != 0 {
+			d.poller.keyList = append(d.poller.keyList[:d.poller.index-1], d.poller.keyList[d.poller.index:]...)
+			d.poller.index = (d.poller.index - 1) % int64(len(d.poller.keyList))
+		} else {
+			d.poller.keyList = d.poller.keyList[:len(d.poller.keyList)-1]
+			d.poller.index = 0
+		}
+		d.mu.Unlock()
 		logger.Tracef("UnRegister node: %s", key)
 		return nil
 	}
@@ -174,8 +126,8 @@ func (d *HttpDispatcher) UnRegister(node *model.Node) error {
 }
 
 // Ping 节点心跳
-func (d *HttpDispatcher) Ping(node *model.Node) error {
-	key := node.Name + "@" + node.Address
+func (d *GrpcDispatcher) Ping(node *model.Node) error {
+	key := utils.GetNodeKey(node.Name, node.Address)
 	if _, ok := d.nodes.Load(key); ok {
 		d.nodes.Store(key, NodeInfo{
 			node:         node,
@@ -187,7 +139,7 @@ func (d *HttpDispatcher) Ping(node *model.Node) error {
 }
 
 // HealthcheckNode 检查节点心跳
-func (d *HttpDispatcher) HealthcheckNode(node *model.Node) {
+func (d *GrpcDispatcher) HealthcheckNode(node *model.Node) {
 	d.nodes.Range(func(_, value any) bool {
 		nodeInfo := value.(NodeInfo)
 		if time.Now().Unix()-nodeInfo.lastPingTime > 3*60 {
@@ -198,57 +150,46 @@ func (d *HttpDispatcher) HealthcheckNode(node *model.Node) {
 }
 
 // SendJob 发送任务
-func (d *HttpDispatcher) SendJob(name, yamlString string, jobDetailID int, node *model.Node) {
+func (d *GrpcDispatcher) SendJob(name, yamlString string, jobDetailID int, node *model.Node) *api.AlineMessage {
 	logger.Tracef("SendJob: %v to %s@%s", name, node.Name, node.Address)
 	msg := &api.AlineMessage{
-		Type: 4,
+		Name:    node.Name,
+		Address: node.Address,
+		Type:    4,
 		ExecReq: &api.ExecuteReq{
 			Name:         name,
 			PipelineFile: yamlString,
 			JobDetailId:  int64(jobDetailID),
 		},
 	}
-	server.SendMessage(msg)
+	if nodes, ok := d.JobNodeMap.Load(utils.FormatJobToString(name, jobDetailID)); ok {
+		d.JobNodeMap.Store(utils.FormatJobToString(name, jobDetailID), append(nodes.([]*model.Node), node))
+	} else {
+		d.JobNodeMap.Store(utils.FormatJobToString(name, jobDetailID), []*model.Node{node})
+	}
+	return msg
 }
 
-// CancelJob 取消任务
-func (d *HttpDispatcher) CancelJob(job *model.JobDetail, node *model.Node) {
-	logger.Tracef("CancelJob: %v to %s@%s", job.Name, node.Name, node.Address)
+// CancelJobWithNode 取消任务通过指定节点
+func (d *GrpcDispatcher) CancelJobWithNode(name string, jobDetailID int, node *model.Node) *api.AlineMessage {
+	logger.Tracef("CancelJob: %s(%d) to %s@%s", name, jobDetailID, node.Name, node.Address)
 	msg := &api.AlineMessage{
-		Type: 5,
+		Name:    node.Name,
+		Address: node.Address,
+		Type:    5,
 		ExecReq: &api.ExecuteReq{
-			Name:         job.Name,
-			PipelineFile: job.ToString(),
-			JobDetailId:  int64(job.Id),
+			Name:        name,
+			JobDetailId: int64(jobDetailID),
 		},
 	}
-	d.msgChan <- msg
+	return msg
 }
 
-// GetExecutor 根据节点获取执行器
-// TODO ... 这个方法设计的不好，分布式机构后应当用 api 代替
-func (d *HttpDispatcher) GetExecutor(node *model.Node) executor.IExecutor {
-
-	return nil
-}
-
-type ReceivedInfo struct {
-	AlineMessageType int
-	JobName          string
-	Node             string
-}
-
-func (d *HttpDispatcher) IsReceived(receivedInfo ReceivedInfo) bool {
-	logger.Tracef("IsReceived: %v", receivedInfo)
-	k := fmt.Sprintf("%d@%s@%s", receivedInfo.AlineMessageType, receivedInfo.JobName, receivedInfo.Node)
-	if _, ok := d.receivedMap.Load(k); ok {
-		return true
+func (d *GrpcDispatcher) CancelJob(name string, jobDetailID int) (*api.AlineMessage, error) {
+	if nodes, ok := d.JobNodeMap.Load(utils.FormatJobToString(name, jobDetailID)); ok {
+		// 数组中最后一个
+		node := nodes.([]*model.Node)[len(nodes.([]*model.Node))-1]
+		return d.CancelJobWithNode(name, jobDetailID, node), nil
 	}
-	return false
-}
-
-func (d *HttpDispatcher) Received(receivedInfo ReceivedInfo) {
-	logger.Tracef("Received: %v", receivedInfo)
-	k := fmt.Sprintf("%d@%s@%s", receivedInfo.AlineMessageType, receivedInfo.JobName, receivedInfo.Node)
-	d.receivedMap.Store(k, receivedInfo)
+	return nil, fmt.Errorf("job %s(%d) not found execute node", name, jobDetailID)
 }

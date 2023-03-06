@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"strconv"
@@ -11,24 +10,18 @@ import (
 	"time"
 
 	"github.com/hamster-shared/aline-engine/action"
+	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/service"
 	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type IExecutor interface {
-
-	// FetchJob 获取任务
-	FetchJob(name string) (io.Reader, error)
-
 	// Execute 执行任务
 	Execute(id int, job *model.Job) error
-
 	// HandlerLog 处理日志
 	HandlerLog(jobId int)
-
 	//SendResultToQueue 发送结果到队列
 	SendResultToQueue(channel chan model.StatusChangeMessage, jobWrapper *model.JobDetail)
 
@@ -36,16 +29,8 @@ type IExecutor interface {
 }
 
 type Executor struct {
-	cancelMap       map[string]func()
-	jobService      service.Jober
-	callbackChannel chan model.StatusChangeMessage
-}
-
-// FetchJob 获取任务
-func (e *Executor) FetchJob(name string) (io.Reader, error) {
-	//TODO... 根据 name 从 rpc 或 直接内部调用获取 job 的 pipeline 文件
-	job := e.jobService.GetJob(name)
-	return strings.NewReader(job), nil
+	cancelMap  map[string]func()
+	StatusChan chan model.StatusChangeMessage
 }
 
 // Execute 执行任务
@@ -75,7 +60,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	homeDir, _ := os.UserHomeDir()
 
-	engineContext := make(map[string]interface{})
+	engineContext := make(map[string]any)
 	engineContext["hamsterRoot"] = path.Join(homeDir, "workdir")
 	workdir := path.Join(engineContext["hamsterRoot"].(string), job.Name)
 	engineContext["workdir"] = workdir
@@ -144,7 +129,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		stageWapper.StartTime = time.Now()
 		jobWrapper.Stages[index] = stageWapper
 		jobWrapper.Output.NewStage(stageWapper.Name)
-		e.jobService.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 		for index, step := range stageWapper.Stage.Steps {
 			var ah action.ActionHandler
@@ -189,7 +174,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewRemoteAction(step, ctx)
 			}
 			err = executeAction(ah, jobWrapper)
-			dataTime := time.Now().Sub(stageWapper.Stage.Steps[index].StartTime)
+			dataTime := time.Since(stageWapper.Stage.Steps[index].StartTime)
 			stageWapper.Stage.Steps[index].Duration = dataTime.Milliseconds()
 			if err != nil {
 				stageWapper.Stage.Steps[index].Status = model.STATUS_FAIL
@@ -208,10 +193,10 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		} else {
 			stageWapper.Status = model.STATUS_SUCCESS
 		}
-		dataTime := time.Now().Sub(stageWapper.StartTime)
+		dataTime := time.Since(stageWapper.StartTime)
 		stageWapper.Duration = dataTime.Milliseconds()
 		jobWrapper.Stages[index] = stageWapper
-		e.jobService.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 		logger.Info("}")
 		if err != nil {
 			cancel()
@@ -229,33 +214,26 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		jobWrapper.Error = err.Error()
 	}
 
-	dataTime := time.Now().Sub(jobWrapper.StartTime)
+	dataTime := time.Since(jobWrapper.StartTime)
 	jobWrapper.Duration = dataTime.Milliseconds()
-	e.jobService.SaveJobDetail(jobWrapper.Name, jobWrapper)
+	jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 	//TODO ... 发送结果到队列
-	e.SendResultToQueue(e.callbackChannel, jobWrapper)
+	e.SendResultToQueue(jobWrapper)
 	//_ = os.RemoveAll(path.Join(engineContext["hamsterRoot"].(string), job.Name))
 
 	return err
 
 }
 
-// HandlerLog 处理日志
-func (e *Executor) HandlerLog(jobId int) {
-
-	//TODO ...
-}
-
 // SendResultToQueue 发送结果到队列
-func (e *Executor) SendResultToQueue(channel chan model.StatusChangeMessage, job *model.JobDetail) {
+func (e *Executor) SendResultToQueue(job *model.JobDetail) {
 	//TODO ...
-	channel <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
+	e.StatusChan <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
 }
 
 // Cancel 取消
 func (e *Executor) Cancel(id int, job *model.Job) error {
-
 	cancel, ok := e.cancelMap[strings.Join([]string{job.Name, strconv.Itoa(id)}, "/")]
 	if ok {
 		cancel()

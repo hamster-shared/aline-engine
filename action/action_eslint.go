@@ -187,6 +187,9 @@ func (a *EslintAction) Post() error {
 	}
 	checkResult := model.NewContractCheckResult(consts.FrontEndCheckReport.Name, consts.CheckSuccess.Result, consts.FrontEndCheckReport.Tool, checkResultDetailsList)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
+	if err != nil {
+		return err
+	}
 	marshal, err := json.Marshal(checkResult)
 	if err != nil {
 		return err

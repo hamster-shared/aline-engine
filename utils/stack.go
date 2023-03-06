@@ -5,7 +5,7 @@ import (
 )
 
 // Stack 堆栈
-type Stack[T interface{}] struct {
+type Stack[T any] struct {
 	elements []T
 }
 

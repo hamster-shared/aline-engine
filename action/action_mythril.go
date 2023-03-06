@@ -6,20 +6,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/consts"
-	"github.com/hamster-shared/aline-engine/logger"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
 	"os/exec"
 	path2 "path"
 	"strconv"
 	"strings"
+
+	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
-// MythRilAction mythRil合约检查
+// MythRilAction mythRil 合约检查
 type MythRilAction struct {
 	path        string
 	solcVersion string
@@ -123,7 +124,7 @@ func (a *MythRilAction) Hook() (*model.ActionResult, error) {
 	for _, path := range absPathList {
 		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
 		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
-		err, redundantPath := utils.GetRedundantPath(basePath, path)
+		redundantPath, err := utils.GetRedundantPath(basePath, path)
 		if err != nil {
 			return nil, err
 		}
@@ -179,6 +180,9 @@ func (a *MythRilAction) Post() error {
 		return errors.New("check result path is err")
 	}
 	fileInfos, err := open.Readdir(-1)
+	if err != nil {
+		return err
+	}
 	successFlag := true
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails]
 	for _, info := range fileInfos {
@@ -225,7 +229,7 @@ func (a *MythRilAction) Post() error {
 			}
 			successFlag = false
 		}
-		details := model.NewContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails](strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	var result string

@@ -10,7 +10,6 @@
 package logger
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -27,10 +26,9 @@ import (
 var l *Logger
 
 type Logger struct {
-	mu  sync.Mutex
-	l   *logrus.Logger
-	f   *os.File
-	mem *bytes.Buffer
+	mu sync.Mutex
+	l  *logrus.Logger
+	f  *os.File
 }
 
 func Init() *Logger {
@@ -61,13 +59,6 @@ func (l *Logger) ToFile() *Logger {
 	return l
 }
 
-func (l *Logger) ToMemory() *Logger {
-	l.mem = new(bytes.Buffer)
-	l.l.SetOutput(l.mem)
-	l.l.SetFormatter(formatter(false))
-	return l
-}
-
 func (l *Logger) ToStdoutAndFile() *Logger {
 	l.makeLogDir()
 	if l.logFile() == nil {
@@ -77,51 +68,6 @@ func (l *Logger) ToStdoutAndFile() *Logger {
 	l.l.SetOutput(multi)
 	l.l.SetFormatter(formatter(false))
 	return l
-}
-
-func (l *Logger) ToStdoutAndMemory() *Logger {
-	l.mem = new(bytes.Buffer)
-	multi := io.MultiWriter(os.Stdout, l.mem)
-	l.l.SetOutput(multi)
-	l.l.SetFormatter(formatter(false))
-	return l
-}
-
-func (l *Logger) ToStdoutAndFileAndMemory() *Logger {
-	l.makeLogDir()
-	if l.logFile() == nil {
-		return l.ToStdoutAndMemory()
-	}
-	l.mem = new(bytes.Buffer)
-	multi := io.MultiWriter(os.Stdout, l.logFile(), l.mem)
-	l.l.SetOutput(multi)
-	l.l.SetFormatter(formatter(false))
-	return l
-}
-
-func Buffer() *bytes.Buffer {
-	return l.mem
-}
-
-func ClearBuffer() {
-	if l.mem == nil {
-		return
-	}
-	l.mem.Reset()
-}
-
-func AutoClearBuffer(len int) {
-	if l.mem == nil {
-		return
-	}
-	go func(len int) {
-		for {
-			time.Sleep(time.Second * 1)
-			if l.mem.Len() > len {
-				ClearBuffer()
-			}
-		}
-	}(len)
 }
 
 func (l *Logger) makeLogDir() {

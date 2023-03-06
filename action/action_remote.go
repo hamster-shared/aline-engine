@@ -73,10 +73,13 @@ func (a *RemoteAction) Hook() (*model2.ActionResult, error) {
 		return nil, err
 	}
 	yamlFile, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
 	var remoteAction model2.RemoteAction
 	err = yaml.Unmarshal(yamlFile, &remoteAction)
 
-	for envName, _ := range remoteAction.Inputs {
+	for envName := range remoteAction.Inputs {
 		env = append(env, fmt.Sprintf("%s=%s", envName, a.args[envName]))
 	}
 
@@ -87,6 +90,9 @@ func (a *RemoteAction) Hook() (*model2.ActionResult, error) {
 		} else {
 			stepFile := path.Join(a.actionRoot, fmt.Sprintf("step-%d", index))
 			err = os.WriteFile(stepFile, []byte(step.Run), os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
 			args = append(args, "-c", stepFile)
 		}
 
