@@ -24,6 +24,7 @@ type Engine interface {
 	RegisterStatusChangeHook(ch chan model.StatusChangeMessage)
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
+	TerminalJob(name string, id int) error
 }
 
 type Role int
