@@ -112,10 +112,18 @@ func (e *workerEngine) handleDoneJob() {
 // 回传日志
 func (e *workerEngine) sendLog(msg *api.AlineMessage) {
 	go func() {
+		errorCounter := 0
 		for {
 			logMsg, err := getLogMsg(msg)
 			if err != nil {
-				return
+				if errorCounter > 10 {
+					logger.Errorf("get job log string error: %v", err)
+					return
+				}
+				// 刚建立任务的时候，可能日志还没出来，错误是正常的，先等一会儿
+				errorCounter++
+				time.Sleep(time.Millisecond * 500)
+				continue
 			}
 			e.rpcClient.SendMsgChan <- logMsg
 
