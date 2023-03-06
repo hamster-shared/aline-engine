@@ -17,6 +17,7 @@ type Engine interface {
 	GetCodeInfo(name string, historyId int) (string, error)
 	ExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
+	CreateJobDetail(name string) (*model.JobDetail, error)
 }
 
 type Role int
@@ -109,4 +110,8 @@ func (e *engine) CancelJob(name string, id int) error {
 
 func (e *engine) GetJobHistory(name string, id int) (*model.JobDetail, error) {
 	return jober.GetJobDetail(name, id)
+}
+
+func (e *engine) CreateJobDetail(name string) (*model.JobDetail, error) {
+	return jober.CreateJobDetail(name)
 }
