@@ -15,7 +15,7 @@ type Engine interface {
 	GetJob(name string) (*model.Job, error)
 	GetJobs(keyword string, page, size int) (*model.JobPage, error)
 	GetCodeInfo(name string, historyId int) (string, error)
-	ExecuteJob(name string) error
+	ExecuteJob(name string) (*model.JobDetail, error)
 	ReExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
 	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
@@ -101,15 +101,15 @@ func (e *engine) GetCodeInfo(name string, historyId int) (string, error) {
 	return jobDetail.CodeInfo, nil
 }
 
-func (e *engine) ExecuteJob(name string) error {
+func (e *engine) ExecuteJob(name string) (*model.JobDetail, error) {
 	if e.role != RoleMaster {
-		return fmt.Errorf("only master can execute job")
+		return nil, fmt.Errorf("only master can execute job")
 	}
 	jobDetail, err := e.CreateJobDetail(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return e.master.dispatchJob(name, jobDetail.Id)
+	return jobDetail, e.master.dispatchJob(name, jobDetail.Id)
 }
 
 func (e *engine) ReExecuteJob(name string, id int) error {
