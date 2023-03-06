@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	jober "github.com/hamster-shared/aline-engine/job"
+	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
+	"github.com/sirupsen/logrus"
 )
 
 type Engine interface {
@@ -41,6 +43,7 @@ type engine struct {
 }
 
 func NewMasterEngine(listenPort int) (Engine, error) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
 	e := &engine{}
 	e.role = RoleMaster
 

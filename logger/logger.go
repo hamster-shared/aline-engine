@@ -84,7 +84,7 @@ func (l *Logger) logFile() *os.File {
 		return l.f
 	}
 
-	filename := time.Now().Local().Format("2006-01-02-15:04:05") + ".log"
+	filename := time.Now().Local().Format("aline-engine-2006-01-02-15:04:05") + ".log"
 	filename = filepath.Join("log", filename)
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
