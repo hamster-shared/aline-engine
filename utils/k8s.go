@@ -160,8 +160,13 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func GetPodLogs(client *kubernetes.Clientset, containerName, deploymentName, namespace string) (*restclient.Request, error) {
+func GetPodLogs(containerName, deploymentName, namespace string) (*restclient.Request, error) {
 	var req *restclient.Request
+	client, err := InitK8sClient()
+	if err != nil {
+		log.Println("get k8s client failed", err.Error())
+		return req, err
+	}
 	pods, err := client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("app=%s", deploymentName),
 	})
