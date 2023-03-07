@@ -68,6 +68,14 @@ func SaveJobDetail(name string, job *model.JobDetail) error {
 	return nil
 }
 
+func SaveStringJobDetail(name string, id int, content string) error {
+	return saveStringToFile(getJobDetailFilePath(name, id), content)
+}
+
+func ReadStringJobDetail(name string, id int) (string, error) {
+	return readStringFromFile(getJobDetailFilePath(name, id))
+}
+
 // UpdateJobDetail update job detail yaml file
 func UpdateJobDetail(name string, job *model.JobDetail) error {
 	return SaveJobDetail(name, job)

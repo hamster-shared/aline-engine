@@ -61,7 +61,7 @@ func (e *workerEngine) handleGrpcMessage() {
 				// 接收到 master 节点的执行任务
 				logger.Tracef("worker engine receive execute job message: %v", msg)
 				e.executeClient.QueueChan <- model.NewStartQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
-				e.sendLog(msg)
+				e.sendLogJobDetail(msg)
 
 			case 5:
 				// 4. 接收到 master 节点的取消任务
@@ -109,12 +109,12 @@ func (e *workerEngine) handleDoneJob() {
 	}()
 }
 
-// 回传日志
-func (e *workerEngine) sendLog(msg *api.AlineMessage) {
+// 回传日志和 job detail
+func (e *workerEngine) sendLogJobDetail(msg *api.AlineMessage) {
 	go func() {
 		errorCounter := 0
 		for {
-			logMsg, err := getLogMsg(msg)
+			logMsg, err := getLogAndJobDetailMsg(msg)
 			if err != nil {
 				if errorCounter > 10 {
 					logger.Errorf("get job log string error: %v", err)
@@ -132,7 +132,7 @@ func (e *workerEngine) sendLog(msg *api.AlineMessage) {
 			if _, ok := e.doneJobList.Load(doneJobKey); ok {
 				e.doneJobList.Delete(doneJobKey)
 				// 任务完成后再传一次，免得日志不完整
-				logMsg, _ := getLogMsg(msg)
+				logMsg, _ := getLogAndJobDetailMsg(msg)
 				e.rpcClient.SendMsgChan <- logMsg
 				return
 			}
@@ -143,18 +143,26 @@ func (e *workerEngine) sendLog(msg *api.AlineMessage) {
 	}()
 }
 
-func getLogMsg(msg *api.AlineMessage) (*api.AlineMessage, error) {
+func getLogAndJobDetailMsg(msg *api.AlineMessage) (*api.AlineMessage, error) {
 	logString, err := jober.GetJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
 	if err != nil {
 		logger.Errorf("get job log string error: %v", err)
 		return nil, fmt.Errorf("get job log string error: %v", err)
-	} else {
-		return &api.AlineMessage{
-			Type:    7,
-			Name:    msg.Name,
-			Address: msg.Address,
-			ExecReq: msg.ExecReq,
-			Log:     logString,
-		}, nil
 	}
+	jobDetailString, err := jober.ReadStringJobDetail(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+	if err != nil {
+		logger.Errorf("get job detail string failed: %s", err)
+		return nil, fmt.Errorf("get job detail string failed: %s", err)
+	}
+	return &api.AlineMessage{
+		Type:    7,
+		Name:    msg.Name,
+		Address: msg.Address,
+		ExecReq: &api.ExecuteReq{
+			Name:         msg.ExecReq.Name,
+			JobDetailId:  msg.ExecReq.JobDetailId,
+			PipelineFile: jobDetailString,
+		},
+		Log: logString,
+	}, nil
 }

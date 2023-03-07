@@ -100,8 +100,8 @@ func GrpcServerStart(listenAddress string) (*AlineGrpcServer, error) {
 		err := grpcServer.Serve(listener)
 		if err != nil {
 			logger.Errorf("grpc server serve failed: %v", err)
-			// grpc server 监听失败，直接 panic
-			// goroutine 内的 panic，也会导致整个程序退出
+			// grpc server 监听失败，直接使程序 panic
+			// goroutine 内的 panic，如果没有 recover，也会导致整个程序退出
 			panic(err)
 		}
 	}()

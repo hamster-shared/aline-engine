@@ -20,11 +20,8 @@ import (
 type IExecutor interface {
 	// Execute 执行任务
 	Execute(id int, job *model.Job) error
-	// HandlerLog 处理日志
-	HandlerLog(jobId int)
 	//SendResultToQueue 发送结果到队列
-	SendResultToQueue(channel chan model.StatusChangeMessage, jobWrapper *model.JobDetail)
-
+	SendResultToQueue(job *model.JobDetail)
 	Cancel(id int, job *model.Job) error
 }
 
@@ -231,7 +228,6 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 // SendResultToQueue 发送结果到队列
 func (e *Executor) SendResultToQueue(job *model.JobDetail) {
-	//TODO ...
 	e.StatusChan <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
 }
 

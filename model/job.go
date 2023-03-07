@@ -190,3 +190,19 @@ type DoneJob struct {
 	Name string
 	ID   int
 }
+
+func IntToStatus(s int) (Status, error) {
+	switch s {
+	case 0:
+		return STATUS_NOTRUN, nil
+	case 1:
+		return STATUS_RUNNING, nil
+	case 2:
+		return STATUS_FAIL, nil
+	case 3:
+		return STATUS_SUCCESS, nil
+	case 4:
+		return STATUS_STOP, nil
+	}
+	return STATUS_NOTRUN, fmt.Errorf("unknown status: %d", s)
+}

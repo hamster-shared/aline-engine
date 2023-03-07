@@ -24,7 +24,7 @@ type Engine interface {
 	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
 	DeleteJobHistory(name string, id int) error
 	CreateJobDetail(name string) (*model.JobDetail, error)
-	RegisterStatusChangeHook(ch chan model.StatusChangeMessage)
+	RegisterStatusChangeHook(hook func(message model.StatusChangeMessage))
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
 	TerminalJob(name string, id int) error
@@ -142,11 +142,11 @@ func (e *engine) CreateJobDetail(name string) (*model.JobDetail, error) {
 	return jober.CreateJobDetail(name)
 }
 
-func (e *engine) RegisterStatusChangeHook(ch chan model.StatusChangeMessage) {
+func (e *engine) RegisterStatusChangeHook(hook func(message model.StatusChangeMessage)) {
 	if e.role != RoleMaster {
 		return
 	}
-	e.master.registerStatusChangeHook(ch)
+	e.master.registerStatusChangeHook(hook)
 }
 
 func (e *engine) GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error) {
@@ -165,7 +165,7 @@ func (e *engine) TerminalJob(name string, id int) error {
 	if e.role != RoleMaster {
 		return fmt.Errorf("only master can terminal job")
 	}
-	return e.master.terminalJob(name, id)
+	return e.master.cancelJob(name, id)
 }
 
 func readLogLevelFromEnv() logrus.Level {

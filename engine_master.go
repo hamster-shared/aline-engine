@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/hamster-shared/aline-engine/dispatcher"
@@ -11,8 +12,9 @@ import (
 )
 
 type masterEngine struct {
-	dispatch  dispatcher.IDispatcher
-	rpcServer *server.AlineGrpcServer
+	dispatch         dispatcher.IDispatcher
+	rpcServer        *server.AlineGrpcServer
+	statusChangeChan chan model.StatusChangeMessage
 }
 
 func newMasterEngine(listenAddress string) (*masterEngine, error) {
@@ -79,20 +81,34 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				} else {
 					logger.Tracef("node ping success: %v", msg)
 				}
-			case 4:
-				// 这是属于 worker 节点的消息，不需要处理
-			case 5:
-				// 执行状态
+			case 4, 5:
+				logger.Debugf("grpc server recv job exec request: %v", msg)
+			case 6:
+				// 执行结果
+				// msg.Result to model.Status
+				statusInt, err := strconv.Atoi(msg.Result)
+				if err != nil {
+					logger.Errorf("strconv.Atoi(msg.Result) error: %v", err)
+				}
+				status, err := model.IntToStatus(statusInt)
+				if err != nil {
+					logger.Errorf("IntToStatus error: %v", err)
+				}
+				e.statusChangeChan <- model.NewStatusChangeMsg(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), status)
 
 			case 7:
-				// 接收到任务的执行日志，保存起来
-				// 如果是本机 worker 节点的日志，就不需要保存了
+				// 接收到任务的执行日志和修改了的 job detail，保存起来
+				// 如果是本机 worker 节点，就不需要保存了
 				if msg.Address == "127.0.0.1" {
-					break
+					continue
 				}
 				err := jober.SaveJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), msg.Log)
 				if err != nil {
-					logger.Errorf("save job log error: %v", err)
+					logger.Errorf("save job log error: %s", err)
+				}
+				err = jober.SaveStringJobDetail(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), msg.ExecReq.PipelineFile)
+				if err != nil {
+					logger.Errorf("save job detail error: %s", err)
 				}
 
 			default:
@@ -160,12 +176,8 @@ func (e *masterEngine) cancelJob(name string, id int) error {
 	return nil
 }
 
-func (e *masterEngine) registerStatusChangeHook(ch chan model.StatusChangeMessage) {
-	// TODO
-
-}
-
-func (e *masterEngine) terminalJob(name string, id int) error {
-	// TODO
-	return nil
+func (e *masterEngine) registerStatusChangeHook(hook func(message model.StatusChangeMessage)) {
+	if hook != nil {
+		hook(<-e.statusChangeChan)
+	}
 }

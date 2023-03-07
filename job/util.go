@@ -34,7 +34,7 @@ func createDirIfNotExist(dir string) error {
 	return nil
 }
 
-// 保存字符串到文件
+// saveStringToFile 保存字符串到文件
 func saveStringToFile(filePath, content string) error {
 	err := createDirIfNotExist(filepath.Dir(filePath))
 	if err != nil {
