@@ -15,7 +15,6 @@ import (
 func isFileExist(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
-		logger.Errorf("stat file failed: %s", err.Error())
 		if os.IsNotExist(err) {
 			return false
 		}

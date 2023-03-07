@@ -382,13 +382,13 @@ func GetJobObject(name string) (*model.Job, error) {
 	var jobData model.Job
 	// job file path
 	jobFilePath := getJobFilePath(name)
-	// if !isFileExist(jobFilePath) {
-	// 	logger.Errorf("get job failed, job file not exist: %s", jobFilePath)
-	// 	return nil, fmt.Errorf("get job failed, job file not exist: %s", jobFilePath)
-	// }
+	if !isFileExist(jobFilePath) {
+		logger.Warnf("get job failed, job file not exist: %s", jobFilePath)
+		return nil, fmt.Errorf("get job failed, job file not exist: %s", jobFilePath)
+	}
 	fileContent, err := os.ReadFile(jobFilePath)
 	if err != nil {
-		logger.Error("get job read file failed", err.Error())
+		logger.Error("get job read file failed: ", err.Error())
 		return nil, err
 	}
 	err = yaml.Unmarshal(fileContent, &jobData)
