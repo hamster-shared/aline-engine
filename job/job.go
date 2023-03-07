@@ -383,8 +383,8 @@ func GetJobObject(name string) (*model.Job, error) {
 	// job file path
 	jobFilePath := getJobFilePath(name)
 	if !isFileExist(jobFilePath) {
-		logger.Error("get job failed, job file not exist")
-		return nil, fmt.Errorf("get job failed, job file not exist")
+		logger.Errorf("get job failed, job file not exist: %s", jobFilePath)
+		return nil, fmt.Errorf("get job failed, job file not exist: %s", jobFilePath)
 	}
 	fileContent, err := os.ReadFile(jobFilePath)
 	if err != nil {
