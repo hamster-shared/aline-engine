@@ -92,6 +92,9 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if jobWrapper.Status != model.STATUS_RUNNING {
 			return nil
 		}
+		if ah == nil {
+			return nil
+		}
 		err := ah.Pre()
 		if err != nil {
 			job.Status = model.STATUS_FAIL
