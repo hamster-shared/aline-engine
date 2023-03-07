@@ -53,10 +53,10 @@ func NewMasterEngine(listenPort int) (Engine, error) {
 		return nil, err
 	}
 
-	e.worker, err = newWorkerEngine(fmt.Sprintf("127.0.0.1:%d", listenPort))
-	if err != nil {
-		return nil, err
-	}
+	// e.worker, err = newWorkerEngine(fmt.Sprintf("127.0.0.1:%d", listenPort))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return e, nil
 }
