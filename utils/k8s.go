@@ -2,10 +2,12 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"log"
@@ -157,3 +159,21 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 }
 
 func int32Ptr(i int32) *int32 { return &i }
+
+func GetPodLogs(client *kubernetes.Clientset, containerName, deploymentName, namespace string) (*restclient.Request, error) {
+	var req *restclient.Request
+	pods, err := client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", deploymentName),
+	})
+	if err != nil {
+		log.Println("get pods failed", err.Error())
+		return req, err
+	}
+	if len(pods.Items) > 0 {
+		req = client.CoreV1().Pods(namespace).GetLogs(pods.Items[0].Name, &corev1.PodLogOptions{
+			Container: containerName,
+			Follow:    true,
+		})
+	}
+	return req, nil
+}
