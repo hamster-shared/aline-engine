@@ -55,7 +55,7 @@ func (c *AlineGrpcClient) handleMessage() error {
 			if err := stream.Send(msg); err != nil {
 				logger.Errorf("gprc client send message failed: %v", err)
 				c.ErrorChan <- err
-				return
+				panic(err)
 			} else {
 				logger.Tracef("gprc client send message success: %v", msg)
 			}
