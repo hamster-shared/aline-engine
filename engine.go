@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 
 	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
@@ -43,7 +44,7 @@ type engine struct {
 }
 
 func NewMasterEngine(listenPort int) (Engine, error) {
-	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	logger.Init().ToStdoutAndFile().SetLevel(readLogLevelFromEnv())
 	e := &engine{}
 	e.role = RoleMaster
 
@@ -165,4 +166,16 @@ func (e *engine) TerminalJob(name string, id int) error {
 		return fmt.Errorf("only master can terminal job")
 	}
 	return e.master.terminalJob(name, id)
+}
+
+func readLogLevelFromEnv() logrus.Level {
+	levelStr := os.Getenv("ALINE_LOG_LEVEL")
+	if levelStr == "" {
+		return logrus.InfoLevel
+	}
+	level, err := logrus.ParseLevel(levelStr)
+	if err != nil {
+		return logrus.InfoLevel
+	}
+	return level
 }
