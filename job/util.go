@@ -14,7 +14,12 @@ import (
 // 判断文件是否存在
 func isFileExist(path string) bool {
 	_, err := os.Stat(path)
-	return err == nil || os.IsExist(err)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
 
 // 创建文件夹
