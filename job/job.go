@@ -64,16 +64,17 @@ func SaveJobDetail(name string, job *model.JobDetail) error {
 		logger.Errorf("serializes yaml failed: %s", err)
 		return err
 	}
-	saveStringToFile(getJobDetailFilePath(name, job.Id), string(data))
+	saveStringToFile(GetJobDetailFilePath(name, job.Id), string(data))
 	return nil
 }
 
 func SaveStringJobDetail(name string, id int, content string) error {
-	return saveStringToFile(getJobDetailFilePath(name, id), content)
+	logger.Tracef("save job detail, name: %s, id: %d, content: %s", name, id, content)
+	return saveStringToFile(GetJobDetailFilePath(name, id), content)
 }
 
 func ReadStringJobDetail(name string, id int) (string, error) {
-	return readStringFromFile(getJobDetailFilePath(name, id))
+	return readStringFromFile(GetJobDetailFilePath(name, id))
 }
 
 // UpdateJobDetail update job detail yaml file
@@ -84,7 +85,7 @@ func UpdateJobDetail(name string, job *model.JobDetail) error {
 // GetJobDetail get job detail
 func GetJobDetail(name string, id int) (*model.JobDetail, error) {
 	var jobDetail model.JobDetail
-	jobDetailString, err := readStringFromFile(getJobDetailFilePath(name, id))
+	jobDetailString, err := readStringFromFile(GetJobDetailFilePath(name, id))
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +218,7 @@ func JobDetailList(name string, page, pageSize int) (*model.JobDetailPage, error
 // DeleteJobDetail delete job detail
 func DeleteJobDetail(name string, pipelineDetailId int) error {
 	// job detail file path
-	jobDetailFilePath := getJobDetailFilePath(name, pipelineDetailId)
+	jobDetailFilePath := GetJobDetailFilePath(name, pipelineDetailId)
 	// judge whether the job detail file exists
 	if !isFileExist(jobDetailFilePath) {
 		logger.Error("delete job detail failed,job detail file not exist")

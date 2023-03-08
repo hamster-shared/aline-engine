@@ -79,7 +79,7 @@ func getJobDetailFileDir(name string) string {
 	return filepath.Join(utils.DefaultConfigDir(), consts.JOB_DIR_NAME, name, consts.JOB_DETAIL_DIR_NAME)
 }
 
-func getJobDetailFilePath(name string, id int) string {
+func GetJobDetailFilePath(name string, id int) string {
 	return filepath.Join(getJobDetailFileDir(name), getJobDetailFileName(id))
 }
 
