@@ -18,6 +18,7 @@ type masterEngine struct {
 
 func newMasterEngine(listenAddress string) (*masterEngine, error) {
 	e := &masterEngine{}
+	e.statusChangeChan = make(chan model.StatusChangeMessage, 100)
 	rpcServer, err := server.GrpcServerStart(listenAddress)
 	if err != nil {
 		logger.Errorf("grpc server start failed: %v", err)
