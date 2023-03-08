@@ -5,10 +5,8 @@ import (
 	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
-	v1beta1 "k8s.io/api/networking/v1beta1"
+	networkingv1beta1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -167,8 +165,9 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 	return nil
 }
 
-func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*v1beta1.Ingress, error) {
-	var in *v1beta1.Ingress
+func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*networkingv1beta1.Ingress, error) {
+	var in *networkingv1beta1.Ingress
+	pathType := networkingv1beta1.PathTypePrefix
 	ingress := &networkingv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
@@ -186,11 +185,14 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 								{
 									Path: "/",
 									Backend: networkingv1beta1.IngressBackend{
-										ServiceName: serviceName,
-										ServicePort: intstr.IntOrString{
-											IntVal: ports[0].Port,
+										Service: &networkingv1beta1.IngressServiceBackend{
+											Name: serviceName,
+											Port: networkingv1beta1.ServiceBackendPort{
+												Number: ports[0].Port,
+											},
 										},
 									},
+									PathType: &pathType,
 								},
 							},
 						},
@@ -199,10 +201,10 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 			},
 		},
 	}
-	ingressClient := client.NetworkingV1beta1().Ingresses(namespace)
+	ingressClient := client.NetworkingV1().Ingresses(namespace)
 	list, err := ingressClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		log.Println("get services list failed: ", err.Error())
+		log.Println("get ingress list failed: ", err.Error())
 		return in, err
 	}
 	ingressExist := false
@@ -213,13 +215,13 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 		}
 	}
 	if !ingressExist {
-		in, err = client.NetworkingV1beta1().Ingresses(namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
+		in, err = client.NetworkingV1().Ingresses(namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
 		if err != nil {
 			log.Println("create service failed: ", err.Error())
 			return in, err
 		}
 	} else {
-		in, err = client.NetworkingV1beta1().Ingresses(namespace).Update(context.Background(), ingress, metav1.UpdateOptions{})
+		in, err = client.NetworkingV1().Ingresses(namespace).Update(context.Background(), ingress, metav1.UpdateOptions{})
 		if err != nil {
 			log.Println("update service failed: ", err.Error())
 			return in, err
