@@ -65,7 +65,7 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 	}
 	actionResult := &model.ActionResult{}
 	deployInfo := model.DeployInfo{
-		Url: fmt.Sprintf("%s.%s", serviceName, k.gateway),
+		Url: fmt.Sprintf("http://%s.%s", serviceName, k.gateway),
 	}
 	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
 	return actionResult, nil
