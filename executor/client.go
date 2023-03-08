@@ -18,14 +18,17 @@ func NewExecutorClient() *ExecutorClient {
 }
 
 type ExecutorClient struct {
-	executor   *Executor
-	QueueChan  chan *model.QueueMessage
-	StatusChan chan model.StatusChangeMessage
+	executor  *Executor
+	QueueChan chan *model.QueueMessage
 }
 
 func (c *ExecutorClient) Main() {
 	// 持续监听任务队列
 	go c.handleJobQueue()
+}
+
+func (c *ExecutorClient) GetStatusChangeChan() chan model.StatusChangeMessage {
+	return c.executor.StatusChan
 }
 
 func (c *ExecutorClient) handleJobQueue() {

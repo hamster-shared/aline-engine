@@ -50,6 +50,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	defer func() {
 		// 将执行结果发送到 StatusChan，worker 会监听该 chan，将结果发送到 grpc server
 		e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
+		logger.Info("send status change message to chan, job name: %s, job id: %d, status: %d", jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
 	}()
 
 	if err != nil {

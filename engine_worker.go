@@ -103,7 +103,8 @@ func (e *workerEngine) keepAlive() {
 func (e *workerEngine) handleDoneJob() {
 	go func() {
 		for {
-			jobResultStatus := <-e.executeClient.StatusChan
+			statusChan := e.executeClient.GetStatusChangeChan()
+			jobResultStatus := <-statusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
 			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status)
 			// 回传最终结果
