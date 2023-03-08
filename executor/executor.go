@@ -218,26 +218,19 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	jobWrapper.Duration = dataTime.Milliseconds()
 	jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
-	//TODO ... 发送结果到队列
-	// e.SendResultToQueue(jobWrapper)
-	//_ = os.RemoveAll(path.Join(engineContext["hamsterRoot"].(string), job.Name))
-
+	// 将执行结果发送到 StatusChan，worker 会监听该 chan，将结果发送到 grpc server
 	e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
 
 	return err
 
 }
 
-// SendResultToQueue 发送结果到队列
-// func (e *Executor) SendResultToQueue(job *model.JobDetail) {
-// 	e.StatusChan <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
-// }
-
 // Cancel 取消
 func (e *Executor) Cancel(id int, job *model.Job) error {
 	cancel, ok := e.cancelMap[strings.Join([]string{job.Name, strconv.Itoa(id)}, "/")]
 	if ok {
 		cancel()
+		e.StatusChan <- model.NewStatusChangeMsg(job.Name, id, model.STATUS_STOP)
 	}
 	return nil
 }

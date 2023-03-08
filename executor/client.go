@@ -13,8 +13,7 @@ func NewExecutorClient() *ExecutorClient {
 			cancelMap:  make(map[string]func()),
 			StatusChan: statusChan,
 		},
-		QueueChan:  make(chan *model.QueueMessage, 100),
-		StatusChan: statusChan,
+		QueueChan: make(chan *model.QueueMessage, 100),
 	}
 }
 

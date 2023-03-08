@@ -105,6 +105,7 @@ func (e *workerEngine) handleDoneJob() {
 		for {
 			jobResultStatus := <-e.executeClient.StatusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
+			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status)
 			// 回传最终结果
 			e.rpcClient.SendMsgChan <- &api.AlineMessage{
 				Type:    6,
