@@ -11,19 +11,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type K8sDeployAction struct {
+type K8sIngressAction struct {
+	gateway      string
 	namespace    string
-	containers   string
 	projectName  string
 	servicePorts string
-	ctx          context.Context
 	output       *output.Output
+	ctx          context.Context
 }
 
-func NewK8sDeployAction(step model.Step, ctx context.Context, output *output.Output) *K8sDeployAction {
-	return &K8sDeployAction{
+func NewK8sIngressAction(step model.Step, ctx context.Context, output *output.Output) *K8sIngressAction {
+	return &K8sIngressAction{
+		gateway:      step.With["gateway"],
 		namespace:    step.With["namespace"],
-		containers:   step.With["containers"],
 		projectName:  step.With["project_name"],
 		servicePorts: step.With["service_ports"],
 		ctx:          ctx,
@@ -31,13 +31,13 @@ func NewK8sDeployAction(step model.Step, ctx context.Context, output *output.Out
 	}
 }
 
-func (k *K8sDeployAction) Pre() error {
+func (k *K8sIngressAction) Pre() error {
 	stack := k.ctx.Value(STACK).(map[string]interface{})
 	params := stack["parameter"].(map[string]string)
+	k.gateway = utils.ReplaceWithParam(k.gateway, params)
+	logger.Debugf("k8s gateway : %s", k.gateway)
 	k.namespace = utils.ReplaceWithParam(k.namespace, params)
 	logger.Debugf("k8s namespace : %s", k.namespace)
-	k.containers = utils.ReplaceWithParam(k.containers, params)
-	logger.Debugf("k8s containers : %s", k.containers)
 	k.projectName = utils.ReplaceWithParam(k.projectName, params)
 	logger.Debugf("k8s deploy project name is : %s", k.projectName)
 	k.servicePorts = utils.ReplaceWithParam(k.servicePorts, params)
@@ -45,27 +45,10 @@ func (k *K8sDeployAction) Pre() error {
 	return nil
 }
 
-func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
+func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 	client, err := utils.InitK8sClient()
 	if err != nil {
 		logger.Errorf("init k8s client failed: %s", err.Error())
-		return nil, err
-	}
-	err = utils.CreateNamespace(client, k.namespace)
-	if err != nil {
-		logger.Errorf("k8s create namespace failed: %s", err.Error())
-		return nil, err
-	}
-	var containers []corev1.Container
-	err = json.Unmarshal([]byte(k.containers), &containers)
-	if err != nil {
-		logger.Errorf("k8s containers format failed: %s", err.Error())
-		return nil, err
-	}
-	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
-	_, err = utils.CreateDeployment(client, k.namespace, name, containers)
-	if err != nil {
-		logger.Errorf("k8s create deployment failed: %s", err.Error())
 		return nil, err
 	}
 	var servicePorts []corev1.ServicePort
@@ -74,14 +57,19 @@ func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("k8s service ports format failed: %s", err.Error())
 		return nil, err
 	}
-	err = utils.CreateService(client, k.namespace, name, servicePorts)
+	serviceName := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
+	_, err = utils.CreateIngress(client, k.namespace, serviceName, k.gateway, servicePorts)
 	if err != nil {
-		logger.Errorf("k8s create service failed: %s", err.Error())
+		logger.Errorf("k8s create ingress  failed: %s", err.Error())
 		return nil, err
 	}
+	actionResult := &model.ActionResult{}
+	deployInfo := model.DeployInfo{
+		Url: fmt.Sprintf("%s.%s", serviceName, k.gateway),
+	}
+	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
 	return nil, nil
 }
-
-func (k *K8sDeployAction) Post() error {
+func (k *K8sIngressAction) Post() error {
 	return nil
 }

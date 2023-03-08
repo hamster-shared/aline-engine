@@ -5,7 +5,10 @@ import (
 	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	v1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -137,25 +140,92 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 			break
 		}
 	}
+	// Create the service spec
+	serviceSpec := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: serviceName,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{"app": serviceName},
+			Type:     corev1.ServiceTypeNodePort,
+			Ports:    ports,
+		},
+	}
 	if !serviceExist {
-		// Create the service spec
-		serviceSpec := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: serviceName,
-			},
-			Spec: corev1.ServiceSpec{
-				Selector: map[string]string{"app": serviceName},
-				Type:     corev1.ServiceTypeNodePort,
-				Ports:    ports,
-			},
-		}
 		_, err = serviceClient.Create(context.TODO(), serviceSpec, metav1.CreateOptions{})
 		if err != nil {
 			log.Println("create service failed: ", err.Error())
 			return err
 		}
+	} else {
+		_, err = serviceClient.Update(context.TODO(), serviceSpec, metav1.UpdateOptions{})
+		if err != nil {
+			log.Println("update service failed: ", err.Error())
+			return err
+		}
 	}
 	return nil
+}
+
+func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*v1beta1.Ingress, error) {
+	var in *v1beta1.Ingress
+	ingress := &networkingv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-ingress", serviceName),
+			Annotations: map[string]string{
+				"kubernetes.io/ingress.class": "nginx",
+			},
+		},
+		Spec: networkingv1beta1.IngressSpec{
+			Rules: []networkingv1beta1.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.%s", serviceName, gateway),
+					IngressRuleValue: networkingv1beta1.IngressRuleValue{
+						HTTP: &networkingv1beta1.HTTPIngressRuleValue{
+							Paths: []networkingv1beta1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: networkingv1beta1.IngressBackend{
+										ServiceName: serviceName,
+										ServicePort: intstr.IntOrString{
+											IntVal: ports[0].Port,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ingressClient := client.NetworkingV1beta1().Ingresses(namespace)
+	list, err := ingressClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Println("get services list failed: ", err.Error())
+		return in, err
+	}
+	ingressExist := false
+	for _, ingressItem := range list.Items {
+		if ingressItem.Name == fmt.Sprintf("%s-ingress", serviceName) {
+			ingressExist = true
+			break
+		}
+	}
+	if !ingressExist {
+		in, err = client.NetworkingV1beta1().Ingresses(namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
+		if err != nil {
+			log.Println("create service failed: ", err.Error())
+			return in, err
+		}
+	} else {
+		in, err = client.NetworkingV1beta1().Ingresses(namespace).Update(context.Background(), ingress, metav1.UpdateOptions{})
+		if err != nil {
+			log.Println("update service failed: ", err.Error())
+			return in, err
+		}
+	}
+	return in, err
 }
 
 func int32Ptr(i int32) *int32 { return &i }
