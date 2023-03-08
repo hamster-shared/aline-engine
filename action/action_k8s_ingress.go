@@ -68,7 +68,7 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 		Url: fmt.Sprintf("%s.%s", serviceName, k.gateway),
 	}
 	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
-	return nil, nil
+	return actionResult, nil
 }
 func (k *K8sIngressAction) Post() error {
 	return nil
