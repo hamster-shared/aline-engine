@@ -49,6 +49,7 @@ func (s *AlineGrpcServer) AlineChat(stream api.AlineRPC_AlineChatServer) error {
 
 		// 将收到的消息放入 channel 中，供 engine 处理
 		s.RecvMsgChan <- msg
+		logger.Tracef("len(s.RecvMsgChan): %v", len(s.RecvMsgChan))
 	}
 	return nil
 }
@@ -76,8 +77,8 @@ func (s *AlineGrpcServer) getConn(key string) (streamConnection, bool) {
 func GrpcServerStart(listenAddress string) (*AlineGrpcServer, error) {
 
 	alineGrpcServer := &AlineGrpcServer{
-		RecvMsgChan: make(chan *api.AlineMessage, 100),
-		SendMsgChan: make(chan *api.AlineMessage, 100),
+		RecvMsgChan: make(chan *api.AlineMessage, 10000),
+		SendMsgChan: make(chan *api.AlineMessage, 10000),
 		ErrorChan:   make(chan error, 100),
 	}
 
@@ -143,9 +144,8 @@ func GrpcServerStart(listenAddress string) (*AlineGrpcServer, error) {
 				}
 				logger.Errorf("grpc server send message failed: %v", err)
 				alineGrpcServer.ErrorChan <- err
-			} else {
-				logger.Tracef("grpc server send message success: %v", msg)
 			}
+			logger.Tracef("len(alineGrpcServer.SendMsgChan): %d", len(alineGrpcServer.SendMsgChan))
 		}
 	}()
 

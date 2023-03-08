@@ -30,8 +30,8 @@ func GrpcClientStart(masterAddress string) (*AlineGrpcClient, error) {
 
 	alineGrpcClient := &AlineGrpcClient{
 		rpc:         api.NewAlineRPCClient(conn),
-		RecvMsgChan: make(chan *api.AlineMessage, 100),
-		SendMsgChan: make(chan *api.AlineMessage, 100),
+		RecvMsgChan: make(chan *api.AlineMessage, 10000),
+		SendMsgChan: make(chan *api.AlineMessage, 10000),
 		ErrorChan:   make(chan error, 100),
 	}
 
@@ -57,7 +57,8 @@ func (c *AlineGrpcClient) handleMessage() error {
 				c.ErrorChan <- err
 				panic(err)
 			} else {
-				logger.Tracef("gprc client send message success: %v", msg)
+				logger.Tracef("gprc client send message success: msg.Type: %v", msg.Type)
+				logger.Tracef("len(c.SendMsgChan): %v", len(c.SendMsgChan))
 			}
 		}
 	}()
@@ -75,7 +76,7 @@ func (c *AlineGrpcClient) handleMessage() error {
 				c.ErrorChan <- err
 				return
 			}
-			logger.Tracef("gprc client recv message success: %v", msg)
+			logger.Tracef("gprc client recv message success: msg.Type: %v", msg.Type)
 			c.RecvMsgChan <- msg
 			logger.Tracef("len(c.RecvMsgChan): %v", len(c.RecvMsgChan))
 		}

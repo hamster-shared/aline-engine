@@ -84,6 +84,7 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				logger.Debugf("grpc server recv job exec request: %v", msg)
 			case 6:
 				// 执行结果
+				logger.Debugf("grpc server recv job exec result: %v", msg)
 				status, err := model.IntToStatus(int(msg.Result.JobStatus))
 				if err != nil {
 					logger.Errorf("IntToStatus error: %v", err)
