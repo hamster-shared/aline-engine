@@ -69,7 +69,6 @@ func SaveJobDetail(name string, job *model.JobDetail) error {
 }
 
 func SaveStringJobDetail(name string, id int, content string) error {
-	logger.Tracef("save job detail, name: %s, id: %d, content: %s", name, id, content)
 	return saveStringToFile(GetJobDetailFilePath(name, id), content)
 }
 
