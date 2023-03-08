@@ -29,7 +29,7 @@ message AlineMessage {
   ExecuteReq execReq = 4;
 
   // execute result
-  string result = 5;
+  ExecuteResult result = 5;
 
   // log
   string log = 6;
@@ -46,11 +46,12 @@ message ExecuteReq {
   int64 jobDetailId = 3;
 }
 
-// message ExecuteResult {
-//   string jobDetail = 1;
-//   string startTime = 2;
-//   int64 duration = 3;
-// }
+message ExecuteResult {
+  string jobName = 1;
+  int64 jobID = 2;
+  int64 jobStatus = 3;
+  string error = 4;
+}
 
 // message Log {
 //   string stage = 1;

@@ -103,8 +103,19 @@ func (e *workerEngine) keepAlive() {
 func (e *workerEngine) handleDoneJob() {
 	go func() {
 		for {
-			doneJob := <-e.executeClient.DoneJobChan
-			e.doneJobList.Store(utils.FormatJobToString(doneJob.Name, doneJob.ID), struct{}{})
+			jobResultStatus := <-e.executeClient.StatusChan
+			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
+			// 回传最终结果
+			e.rpcClient.SendMsgChan <- &api.AlineMessage{
+				Type:    6,
+				Name:    e.name,
+				Address: e.address,
+				Result: &api.ExecuteResult{
+					JobName:   jobResultStatus.JobName,
+					JobID:     int64(jobResultStatus.JobId),
+					JobStatus: int64(jobResultStatus.Status),
+				},
+			}
 		}
 	}()
 }

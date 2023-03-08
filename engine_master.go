@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/hamster-shared/aline-engine/dispatcher"
@@ -85,16 +84,11 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				logger.Debugf("grpc server recv job exec request: %v", msg)
 			case 6:
 				// 执行结果
-				// msg.Result to model.Status
-				statusInt, err := strconv.Atoi(msg.Result)
-				if err != nil {
-					logger.Errorf("strconv.Atoi(msg.Result) error: %v", err)
-				}
-				status, err := model.IntToStatus(statusInt)
+				status, err := model.IntToStatus(int(msg.Result.JobStatus))
 				if err != nil {
 					logger.Errorf("IntToStatus error: %v", err)
 				}
-				e.statusChangeChan <- model.NewStatusChangeMsg(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), status)
+				e.statusChangeChan <- model.NewStatusChangeMsg(msg.Result.JobName, int(msg.Result.JobID), status)
 
 			case 7:
 				// 接收到任务的执行日志和修改了的 job detail，保存起来

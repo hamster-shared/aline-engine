@@ -21,7 +21,7 @@ type IExecutor interface {
 	// Execute 执行任务
 	Execute(id int, job *model.Job) error
 	//SendResultToQueue 发送结果到队列
-	SendResultToQueue(job *model.JobDetail)
+	// SendResultToQueue(job *model.JobDetail)
 	Cancel(id int, job *model.Job) error
 }
 
@@ -219,17 +219,19 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 	//TODO ... 发送结果到队列
-	e.SendResultToQueue(jobWrapper)
+	// e.SendResultToQueue(jobWrapper)
 	//_ = os.RemoveAll(path.Join(engineContext["hamsterRoot"].(string), job.Name))
+
+	e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
 
 	return err
 
 }
 
 // SendResultToQueue 发送结果到队列
-func (e *Executor) SendResultToQueue(job *model.JobDetail) {
-	e.StatusChan <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
-}
+// func (e *Executor) SendResultToQueue(job *model.JobDetail) {
+// 	e.StatusChan <- model.NewStatusChangeMsg(job.Name, job.Id, job.Status)
+// }
 
 // Cancel 取消
 func (e *Executor) Cancel(id int, job *model.Job) error {

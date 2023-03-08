@@ -7,22 +7,21 @@ import (
 )
 
 func NewExecutorClient() *ExecutorClient {
-	callbackChan := make(chan model.StatusChangeMessage, 100)
+	statusChan := make(chan model.StatusChangeMessage, 100)
 	return &ExecutorClient{
 		executor: &Executor{
 			cancelMap:  make(map[string]func()),
-			StatusChan: callbackChan,
+			StatusChan: statusChan,
 		},
-		QueueChan: make(chan *model.QueueMessage, 100),
-		// CallbackChan: callbackChan,
+		QueueChan:  make(chan *model.QueueMessage, 100),
+		StatusChan: statusChan,
 	}
 }
 
 type ExecutorClient struct {
-	executor  *Executor
-	QueueChan chan *model.QueueMessage
-	// CallbackChan chan model.StatusChangeMessage
-	DoneJobChan chan *model.DoneJob
+	executor   *Executor
+	QueueChan  chan *model.QueueMessage
+	StatusChan chan model.StatusChangeMessage
 }
 
 func (c *ExecutorClient) Main() {
@@ -61,21 +60,12 @@ func (c *ExecutorClient) handleJobQueue() {
 			var err error
 			if queueMessage.Command == model.Command_Start {
 				err = c.executor.Execute(jobId, job)
-				c.DoneJobChan <- jobDone(jobName, jobId)
 			} else if queueMessage.Command == model.Command_Stop {
 				err = c.executor.Cancel(jobId, job)
-				c.DoneJobChan <- jobDone(jobName, jobId)
 			}
 			if err != nil {
 				logger.Errorf("execute job error: %v", err)
 			}
 		}()
-	}
-}
-
-func jobDone(jobName string, jobID int) *model.DoneJob {
-	return &model.DoneJob{
-		Name: jobName,
-		ID:   jobID,
 	}
 }

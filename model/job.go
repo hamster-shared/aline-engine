@@ -186,11 +186,6 @@ func (s JobVoTimeDecrement) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 func (s JobVoTimeDecrement) Less(i, j int) bool { return s[i].CreateTime.After(s[j].CreateTime) }
 
-type DoneJob struct {
-	Name string
-	ID   int
-}
-
 func IntToStatus(s int) (Status, error) {
 	switch s {
 	case 0:

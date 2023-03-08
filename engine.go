@@ -146,6 +146,7 @@ func (e *engine) RegisterStatusChangeHook(hook func(message model.StatusChangeMe
 	if e.role != RoleMaster {
 		return
 	}
+	logger.Infof("register status change hook")
 	e.master.registerStatusChangeHook(hook)
 }
 
