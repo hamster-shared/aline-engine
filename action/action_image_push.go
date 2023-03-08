@@ -46,6 +46,11 @@ func (i *ImagePushAction) Hook() (*model.ActionResult, error) {
 		return nil, errors.New("docker push image failed")
 	}
 	actionResult := &model.ActionResult{
+		Artifactorys: []model.Artifactory{
+			{
+				Name: i.imageName,
+			},
+		},
 		BuildData: []model.BuildInfo{
 			{
 				ImageName: i.imageName,
