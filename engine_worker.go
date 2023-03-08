@@ -107,7 +107,8 @@ func (e *workerEngine) handleDoneJob() {
 			jobResultStatus := <-statusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
 			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status)
-			// 回传最终结果
+			// 2 秒后回传最终结果，让日志先传完
+			time.Sleep(time.Second * 2)
 			e.rpcClient.SendMsgChan <- &api.AlineMessage{
 				Type:    6,
 				Name:    e.name,
@@ -118,6 +119,7 @@ func (e *workerEngine) handleDoneJob() {
 					JobStatus: int64(jobResultStatus.Status),
 				},
 			}
+			logger.Debugf("job %s-%d result send to master", jobResultStatus.JobName, jobResultStatus.JobId)
 		}
 	}()
 }
