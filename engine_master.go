@@ -44,7 +44,7 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				return
 			}
 
-			logger.Tracef("grpc server recv message: %v", msg)
+			logger.Tracef("grpc server recv message: msg.Type: %v", msg.Type)
 			switch msg.Type {
 			case 1:
 				// 注册
