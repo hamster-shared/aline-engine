@@ -177,7 +177,9 @@ func (e *masterEngine) registerStatusChangeHook(hook func(message model.StatusCh
 		logger.Debugf("register status change hook")
 		go func() {
 			for {
-				hook(<-e.statusChangeChan)
+				msg := <-e.statusChangeChan
+				logger.Infof("hook status change message: %v", msg)
+				hook(msg)
 			}
 		}()
 	}
