@@ -80,6 +80,7 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				} else {
 					logger.Tracef("node ping success: %v", msg)
 				}
+				logger.Tracef("len(e.statusChangeChan): %d", len(e.statusChangeChan))
 			case 4, 5:
 				logger.Debugf("grpc server recv job exec request: %v", msg)
 			case 6:
@@ -173,6 +174,11 @@ func (e *masterEngine) cancelJob(name string, id int) error {
 
 func (e *masterEngine) registerStatusChangeHook(hook func(message model.StatusChangeMessage)) {
 	if hook != nil {
-		hook(<-e.statusChangeChan)
+		logger.Debugf("register status change hook")
+		go func() {
+			for {
+				hook(<-e.statusChangeChan)
+			}
+		}()
 	}
 }
