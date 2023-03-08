@@ -46,6 +46,12 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		},
 	}
 
+	// 分支太多，不确定会从哪个分支 return，所以使用 defer，保证一定会将最终结果发送到 StatusChan
+	defer func() {
+		// 将执行结果发送到 StatusChan，worker 会监听该 chan，将结果发送到 grpc server
+		e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
+	}()
+
 	if err != nil {
 		return err
 	}
@@ -218,11 +224,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	jobWrapper.Duration = dataTime.Milliseconds()
 	jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
-	// 将执行结果发送到 StatusChan，worker 会监听该 chan，将结果发送到 grpc server
-	e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
-
 	return err
-
 }
 
 // Cancel 取消
@@ -230,7 +232,7 @@ func (e *Executor) Cancel(id int, job *model.Job) error {
 	cancel, ok := e.cancelMap[strings.Join([]string{job.Name, strconv.Itoa(id)}, "/")]
 	if ok {
 		cancel()
-		e.StatusChan <- model.NewStatusChangeMsg(job.Name, id, model.STATUS_STOP)
 	}
+	e.StatusChan <- model.NewStatusChangeMsg(job.Name, id, model.STATUS_STOP)
 	return nil
 }
