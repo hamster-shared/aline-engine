@@ -56,7 +56,7 @@ func (i *ImageBuildAction) Hook() (*model.ActionResult, error) {
 			return nil, errors.New("npm run build failed")
 		}
 	}
-	buildCommands := []string{"docker", "buildx", "build", "-t", i.imageName, "--platform=linux/amd64", "."}
+	buildCommands := []string{"docker", "build", "-t", i.imageName, "."}
 	_, err := i.ExecuteCommand(buildCommands, workdir)
 	if err != nil {
 		return nil, errors.New("docker build image failed")
