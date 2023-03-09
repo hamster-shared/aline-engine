@@ -121,6 +121,7 @@ func (a *ArtifactoryAction) Hook() (*model2.ActionResult, error) {
 		return &actionResult, nil
 	} else {
 		actionResult := &model2.ActionResult{
+
 			Artifactorys: []model2.Artifactory{},
 		}
 		basePath := path2.Join(userHomeDir, consts.ArtifactoryDir, jobName, consts.ArtifactoryName, jobId)
