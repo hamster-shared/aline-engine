@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -60,7 +61,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	// 2. 初始化 执行器的上下文
 
 	env := make([]string, 0)
-	env = append(env, "NAME="+job.Name)
+	env = append(env, "PIPELINE_NAME="+job.Name)
+	env = append(env, "PIPELINE_ID="+strconv.Itoa(id))
 
 	homeDir, _ := os.UserHomeDir()
 
@@ -92,14 +94,26 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	jobWrapper.Status = model.STATUS_RUNNING
 	jobWrapper.StartTime = time.Now()
 
-	executeAction := func(ah action.ActionHandler, job *model.JobDetail) error {
+	executeAction := func(ah action.ActionHandler, job *model.JobDetail) (err error) {
+		// 延迟处理的函数
+		defer func() {
+			// 发生宕机时，获取panic传递的上下文并打印
+			rErr := recover()
+			switch rErr.(type) {
+			case runtime.Error: // 运行时错误
+				fmt.Println("runtime error:", rErr)
+				err = fmt.Errorf("runtime error: %s", rErr)
+			default: // 非运行时错误
+				// do nothing
+			}
+		}()
 		if jobWrapper.Status != model.STATUS_RUNNING {
 			return nil
 		}
 		if ah == nil {
 			return nil
 		}
-		err := ah.Pre()
+		err = ah.Pre()
 		if err != nil {
 			job.Status = model.STATUS_FAIL
 			fmt.Println(err)
@@ -119,11 +133,14 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if actionResult != nil && len(actionResult.Deploys) > 0 {
 			jobWrapper.Deploys = append(jobWrapper.Deploys, actionResult.Deploys...)
 		}
+		if actionResult != nil && len(actionResult.BuildData) > 0 {
+			jobWrapper.BuildData = append(jobWrapper.BuildData, actionResult.BuildData...)
+		}
 		if err != nil {
 			job.Status = model.STATUS_FAIL
 			return err
 		}
-		return nil
+		return err
 	}
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
@@ -161,6 +178,14 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewArtifactoryAction(step, ctx, jobWrapper.Output)
 				//} else if step.Uses == "deploy-contract" {
 				//	ah = action.NewTruffleDeployAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "image-build" {
+				ah = action.NewImageBuildAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "image-push" {
+				ah = action.NewImagePushAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "k8s-frontend-deploy" {
+				ah = action.NewK8sDeployAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "k8s-assign-domain" {
+				ah = action.NewK8sIngressAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "sol-profiler-check" {
 				ah = action.NewSolProfilerAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "solhint-check" {
@@ -175,8 +200,12 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewInkAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "frontend-check" {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "eth-gas-reporter" {
+				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "openai" {
+				ah = action.NewOpenaiAction(step, ctx, jobWrapper.Output)
 			} else if strings.Contains(step.Uses, "/") {
 				ah = action.NewRemoteAction(step, ctx)
 			}

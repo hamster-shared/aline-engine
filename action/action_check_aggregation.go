@@ -171,6 +171,14 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			eslintCheckReportReportRaw.Context = eslintCheckResultDetailsList
 			checkResultList = append(checkResultList, eslintCheckReportReportRaw)
 		}
+		if strings.Contains(result, consts.EthGasCheckReport.Name) {
+			var ethGasReportReportRaw model.ContractCheckResult[json.RawMessage]
+			err := json.Unmarshal(file, &ethGasReportReportRaw)
+			if err != nil {
+				continue
+			}
+			checkResultList = append(checkResultList, ethGasReportReportRaw)
+		}
 	}
 	a.path = path2.Join(destDir, consts.CheckAggregationResult)
 	create, err := os.Create(a.path)

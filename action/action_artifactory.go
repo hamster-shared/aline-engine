@@ -11,6 +11,7 @@ import (
 	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
+	"os/exec"
 	path2 "path"
 	"path/filepath"
 	"strconv"
@@ -143,7 +144,6 @@ func (a *ArtifactoryAction) Hook() (*model2.ActionResult, error) {
 				Url:  dest,
 			})
 		}
-
 		return actionResult, nil
 	}
 }
@@ -170,4 +170,18 @@ func GetFiles(workdir string, fuzzyPath []string, pathList []string) []string {
 		}
 	}
 	return pathList
+}
+
+func (a *ArtifactoryAction) ExecuteCommand(commands []string, workdir string) (string, error) {
+	c := exec.CommandContext(a.ctx, commands[0], commands[1:]...) // mac linux
+	c.Dir = workdir
+	logger.Debugf("execute docker command: %s", strings.Join(commands, " "))
+	a.output.WriteCommandLine(strings.Join(commands, " "))
+	out, err := c.CombinedOutput()
+	fmt.Println(string(out))
+	a.output.WriteCommandLine(string(out))
+	if err != nil {
+		a.output.WriteLine(err.Error())
+	}
+	return string(out), err
 }
