@@ -41,7 +41,16 @@ func (c *ExecutorClient) handleJobQueue() {
 		}
 		logger.Tracef("executor client receive message: %v", queueMessage)
 
-		// 保存 job
+		// 如果收到了停止任务的消息，那么就取消任务，结束本次循环
+		if queueMessage.Command == model.Command_Stop {
+			err := c.executor.Cancel(queueMessage.JobName, queueMessage.JobId)
+			if err != nil {
+				logger.Errorf("cancel job error: %v", err)
+			}
+			continue
+		}
+
+		// 否则，保存并执行 job
 		err := jober.SaveJob(queueMessage.JobName, queueMessage.JobContent)
 		if err != nil {
 			logger.Errorf("save job error: %v", err)
@@ -59,12 +68,7 @@ func (c *ExecutorClient) handleJobQueue() {
 
 		//6. 异步执行 pipeline
 		go func() {
-			var err error
-			if queueMessage.Command == model.Command_Start {
-				err = c.executor.Execute(jobId, job)
-			} else if queueMessage.Command == model.Command_Stop {
-				err = c.executor.Cancel(jobId, job)
-			}
+			err := c.executor.Execute(jobId, job)
 			if err != nil {
 				logger.Errorf("execute job error: %v", err)
 			}

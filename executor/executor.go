@@ -229,11 +229,11 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 }
 
 // Cancel 取消
-func (e *Executor) Cancel(id int, job *model.Job) error {
-	cancel, ok := e.cancelMap[strings.Join([]string{job.Name, strconv.Itoa(id)}, "/")]
+func (e *Executor) Cancel(jobName string, id int) error {
+	cancel, ok := e.cancelMap[strings.Join([]string{jobName, strconv.Itoa(id)}, "/")]
 	if ok {
 		cancel()
 	}
-	e.StatusChan <- model.NewStatusChangeMsg(job.Name, id, model.STATUS_STOP)
+	e.StatusChan <- model.NewStatusChangeMsg(jobName, id, model.STATUS_STOP)
 	return nil
 }
