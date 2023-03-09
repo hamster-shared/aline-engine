@@ -105,7 +105,7 @@ func GetJobDetail(name string, id int) (*model.JobDetail, error) {
 	}
 
 	if runningStage >= 0 && runningStage < len(jobDetail.Stages) {
-		jobDetail.Stages[runningStage].Duration = time.Since(jobDetail.Stages[runningStage].StartTime).Microseconds()
+		jobDetail.Stages[runningStage].Duration = time.Since(jobDetail.Stages[runningStage].StartTime).Milliseconds()
 	}
 	return &jobDetail, nil
 }
