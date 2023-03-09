@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -107,8 +108,40 @@ func (e *workerEngine) handleDoneJob() {
 			jobResultStatus := <-statusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
 			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status)
-			// 2 秒后回传最终结果，让日志先传完
-			time.Sleep(time.Second * 2)
+			if e.address != "127.0.0.1" {
+				// 回传日志
+				logMsg, _ := e.getLogAndJobDetailMessage(jobResultStatus.JobName, jobResultStatus.JobId)
+				e.rpcClient.SendMsgChan <- logMsg
+
+				// 回传 report
+				reports, err := jober.GetJobCheckFilesData(jobResultStatus.JobName, strconv.Itoa(jobResultStatus.JobId))
+				if err != nil {
+					logger.Errorf("get job %s-%d report error: %s", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
+				}
+				for _, report := range reports {
+					e.rpcClient.SendMsgChan <- &api.AlineMessage{
+						Type:    9,
+						Name:    e.name,
+						Address: e.address,
+						File:    report,
+					}
+				}
+
+				// 回传构建物
+				artifactorys, err := jober.GetJobArtifactoryFilesData(jobResultStatus.JobName, strconv.Itoa(jobResultStatus.JobId))
+				if err != nil {
+					logger.Errorf("get job %s-%d artifactory error: %s", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
+				}
+				for _, artifactory := range artifactorys {
+					e.rpcClient.SendMsgChan <- &api.AlineMessage{
+						Type:    9,
+						Name:    e.name,
+						Address: e.address,
+						File:    artifactory,
+					}
+				}
+			}
+			// 告诉 master 任务执行完成
 			e.rpcClient.SendMsgChan <- &api.AlineMessage{
 				Type:    6,
 				Name:    e.name,
@@ -126,10 +159,20 @@ func (e *workerEngine) handleDoneJob() {
 
 // 回传日志和 job detail
 func (e *workerEngine) sendLogJobDetail(msg *api.AlineMessage) {
+	if e.address == "127.0.0.1" {
+		return
+	}
 	go func() {
 		errorCounter := 0
 		for {
-			logMsg, err := getLogAndJobDetailMsg(msg)
+			// 检查是否已经完成
+			doneJobKey := utils.FormatJobToString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+			if _, ok := e.doneJobList.Load(doneJobKey); ok {
+				e.doneJobList.Delete(doneJobKey)
+				return
+			}
+
+			logMsg, err := e.getLogAndJobDetailMessage(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
 			if err != nil {
 				if errorCounter > 10 {
 					logger.Errorf("get job log string error: %v", err)
@@ -142,40 +185,30 @@ func (e *workerEngine) sendLogJobDetail(msg *api.AlineMessage) {
 			}
 			e.rpcClient.SendMsgChan <- logMsg
 
-			// 检查是否已经完成
-			doneJobKey := utils.FormatJobToString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
-			if _, ok := e.doneJobList.Load(doneJobKey); ok {
-				e.doneJobList.Delete(doneJobKey)
-				// 任务完成后再传一次，免得日志不完整
-				logMsg, _ := getLogAndJobDetailMsg(msg)
-				e.rpcClient.SendMsgChan <- logMsg
-				return
-			}
-
 			// 0.5s 发送一次日志
 			time.Sleep(time.Millisecond * 500)
 		}
 	}()
 }
 
-func getLogAndJobDetailMsg(msg *api.AlineMessage) (*api.AlineMessage, error) {
-	logString, err := jober.GetJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+func (e *workerEngine) getLogAndJobDetailMessage(jobName string, jobID int) (*api.AlineMessage, error) {
+	logString, err := jober.GetJobLogString(jobName, jobID)
 	if err != nil {
 		logger.Errorf("get job log string error: %v", err)
 		return nil, fmt.Errorf("get job log string error: %v", err)
 	}
-	jobDetailString, err := jober.ReadStringJobDetail(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+	jobDetailString, err := jober.ReadStringJobDetail(jobName, jobID)
 	if err != nil {
 		logger.Errorf("get job detail string failed: %s", err)
 		return nil, fmt.Errorf("get job detail string failed: %s", err)
 	}
 	return &api.AlineMessage{
 		Type:    7,
-		Name:    msg.Name,
-		Address: msg.Address,
+		Name:    e.name,
+		Address: e.address,
 		ExecReq: &api.ExecuteReq{
-			Name:         msg.ExecReq.Name,
-			JobDetailId:  msg.ExecReq.JobDetailId,
+			Name:         jobName,
+			JobDetailId:  int64(jobID),
 			PipelineFile: jobDetailString,
 		},
 		Log: logString,

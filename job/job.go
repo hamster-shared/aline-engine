@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/grpc/api"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
@@ -409,6 +410,82 @@ func GetJobObject(name string) (*model.Job, error) {
 
 // OpenArtifactoryDir open artifactory folder
 func OpenArtifactoryDir(name string, detailId string) error {
-	artifactoryDir := filepath.Join(utils.DefaultConfigDir(), consts.JOB_DIR_NAME, name, consts.ArtifactoryDir, detailId)
+	artifactoryDir := GetJobArtifactoryDir(name, detailId)
 	return platform.OpenDir(artifactoryDir)
+}
+
+// GetJobArtifactoryDir 获取 job 的 artifactory 目录路径
+func GetJobArtifactoryDir(jobName string, jobID string) string {
+	return filepath.Join(utils.DefaultConfigDir(), consts.JOB_DIR_NAME, jobName, consts.ArtifactoryName, jobID)
+}
+
+func GetJobCheckDir(jobName string, jobID string) string {
+	return filepath.Join(utils.DefaultConfigDir(), consts.JOB_DIR_NAME, jobName, consts.CheckName, jobID)
+}
+
+func GetJobArtifactoryFiles(jobName string, jobID string) ([]string, error) {
+	artifactoryDir := GetJobArtifactoryDir(jobName, jobID)
+	return ListFilesAbs(artifactoryDir)
+}
+
+func GetJobCheckFiles(jobName string, jobID string) ([]string, error) {
+	checkDir := GetJobCheckDir(jobName, jobID)
+	return ListFilesAbs(checkDir)
+}
+
+func GetJobArtifactoryFilesData(jobName string, jobID string) ([]*api.File, error) {
+	files, err := GetJobArtifactoryFiles(jobName, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var result []*api.File
+	for _, path := range files {
+		data, err := GetFileData(path)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, &api.File{
+			Path: getRelativeJobsPath(path),
+			Data: data,
+		})
+	}
+	return result, nil
+}
+
+func GetJobCheckFilesData(jobName string, jobID string) ([]*api.File, error) {
+	files, err := GetJobCheckFiles(jobName, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var result []*api.File
+	for _, path := range files {
+		data, err := GetFileData(path)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, &api.File{
+			Path: getRelativeJobsPath(path),
+			Data: data,
+		})
+	}
+	return result, nil
+}
+
+// 获取该路径相对于 jobs 文件夹的路径
+func getRelativeJobsPath(path string) string {
+	jobsDir := GetJobsDir()
+	if strings.HasPrefix(path, jobsDir) {
+		return path[len(jobsDir)+1:]
+	}
+	return path
+}
+
+func GetJobsDir() string {
+	return filepath.Join(utils.DefaultConfigDir(), consts.JOB_DIR_NAME)
+}
+
+// WriteFileToJobsDir 把文件写入到 jobs 文件夹下
+func WriteFileToJobsDir(fileName string, content []byte) error {
+	jobsDir := GetJobsDir()
+	return SaveFile(filepath.Join(jobsDir, fileName), content)
 }

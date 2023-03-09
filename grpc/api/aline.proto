@@ -20,6 +20,7 @@ message AlineMessage {
   // 6: executeResultNotify 客户端发的执行结果通知
   // 7: log 客户端发的日志
   // 8: 错误
+  // 9: 文件
   int64 type = 1;
 
   // registry
@@ -35,6 +36,7 @@ message AlineMessage {
   string log = 6;
 
   string error = 7;
+  File file = 8;
 }
 
 message ExecuteReq {
@@ -58,3 +60,8 @@ message ExecuteResult {
 //   string content = 2;
 //   bool more = 3;
 // }
+
+message File {
+  string path = 1;
+  bytes data = 2;
+}

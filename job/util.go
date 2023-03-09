@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/hamster-shared/aline-engine/consts"
 	"github.com/hamster-shared/aline-engine/logger"
@@ -117,4 +118,46 @@ func renameFile(oldPath, newPath string) error {
 	}
 	newFile := filepath.Join(filepath.Dir(newPath), filepath.Base(oldPath))
 	return os.Rename(newFile, newPath)
+}
+
+// ListFilesRel 递归列出目录下所有文件，返回相对路径
+func ListFilesRel(dir string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			relPath := strings.TrimPrefix(path, dir+"/")
+			files = append(files, relPath)
+		}
+		return nil
+	})
+	return files, err
+}
+
+func ListFilesAbs(dir string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
+}
+
+func SaveFile(path string, data []byte) error {
+	err := createDirIfNotExist(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func GetFileData(path string) ([]byte, error) {
+	return os.ReadFile(path)
 }

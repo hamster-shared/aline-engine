@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/hamster-shared/aline-engine/dispatcher"
+	"github.com/hamster-shared/aline-engine/grpc/api"
 	"github.com/hamster-shared/aline-engine/grpc/server"
 	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
@@ -95,10 +97,6 @@ func (e *masterEngine) handleGrpcServerMessage() {
 
 			case 7:
 				// 接收到任务的执行日志和修改了的 job detail，保存起来
-				// 如果是本机 worker 节点，就不需要保存了
-				if msg.Address == "127.0.0.1" {
-					continue
-				}
 				err := jober.SaveJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), msg.Log)
 				if err != nil {
 					logger.Errorf("save job log error: %s", err)
@@ -107,12 +105,25 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				if err != nil {
 					logger.Errorf("save job detail error: %s", err)
 				}
+			case 8:
+				logger.Debugf("grpc server recv message: %v", msg)
+			case 9:
+				logger.Debugf("grpc server recv file message, file name: %s", msg.File.Path)
+				err := e.saveFile(msg.File)
+				if err != nil {
+					logger.Errorf("save file error: %s", err)
+				}
 
 			default:
 				logger.Warnf("grpc server recv unknown message: %v", msg)
 			}
 		}
 	}()
+}
+
+func (e *masterEngine) saveFile(msg *api.File) error {
+	jobsDir := jober.GetJobsDir()
+	return jober.SaveFile(filepath.Join(jobsDir, msg.Path), msg.Data)
 }
 
 func (e *masterEngine) handleGrpcServerError() {

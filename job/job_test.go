@@ -1,17 +1,17 @@
 package job
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func Test_SaveJob(t *testing.T) {
@@ -195,5 +195,35 @@ func TestOpenFile(t *testing.T) {
 	err := cmd.Run()
 	if err != nil {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+}
+
+func TestGetJobArtifactoryFilesData(t *testing.T) {
+	files, err := GetJobArtifactoryFilesData("4c6d8534-df46-4dd1-9786-2b5f9a587143_507", "2")
+	assert.Nil(t, err)
+	for _, f := range files {
+		t.Logf(f.Path)
+	}
+}
+
+func TestGetJobArtifactoryFiles(t *testing.T) {
+	files, err := GetJobArtifactoryFiles("4c6d8534-df46-4dd1-9786-2b5f9a587143_507", "2")
+	assert.Nil(t, err)
+	for _, f := range files {
+		t.Logf(f)
+	}
+}
+
+func TestGetJobArtifactoryDir(t *testing.T) {
+	dir := GetJobArtifactoryDir("4c6d8534-df46-4dd1-9786-2b5f9a587143_507", "2")
+	fmt.Println(dir)
+	t.Logf(dir)
+}
+
+func TestGetJobCheckFilesData(t *testing.T) {
+	files, err := GetJobCheckFilesData("4c6d8534-df46-4dd1-9786-2b5f9a587143_507", "2")
+	assert.Nil(t, err)
+	for _, f := range files {
+		t.Logf(f.Path)
 	}
 }
