@@ -3,6 +3,9 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log"
+	"path/filepath"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1"
@@ -11,8 +14,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"log"
-	"path/filepath"
 )
 
 func InitK8sClient() (*kubernetes.Clientset, error) {
@@ -37,7 +38,7 @@ func InitK8sClient() (*kubernetes.Clientset, error) {
 	return clientSet, nil
 }
 
-// Create Deployment
+// CreateDeployment create deployment
 func CreateDeployment(client *kubernetes.Clientset, username, deploymentName string, container []corev1.Container) (*appsv1.Deployment, error) {
 	//get deployments by namespace
 	var deploymentRes *appsv1.Deployment
@@ -93,7 +94,6 @@ func CreateDeployment(client *kubernetes.Clientset, username, deploymentName str
 	return deploymentRes, nil
 }
 
-// create namespace
 func CreateNamespace(client *kubernetes.Clientset, username string) error {
 	namespaceList, err := client.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -122,7 +122,6 @@ func CreateNamespace(client *kubernetes.Clientset, username string) error {
 	return nil
 }
 
-// create service
 func CreateService(client *kubernetes.Clientset, username, serviceName string, ports []corev1.ServicePort) error {
 	//get services by namespace
 	serviceClient := client.CoreV1().Services(username)

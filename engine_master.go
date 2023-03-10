@@ -48,8 +48,8 @@ func (e *masterEngine) handleGrpcServerMessage() {
 
 			logger.Tracef("grpc server recv message: msg.Type: %v", msg.Type)
 			switch msg.Type {
-			case 1:
-				// 注册
+			case api.MessageType_REGISTER:
+				// 1 注册
 				err := e.dispatch.Register(&model.Node{
 					Name:    msg.Name,
 					Address: msg.Address,
@@ -60,8 +60,8 @@ func (e *masterEngine) handleGrpcServerMessage() {
 					logger.Debugf("register node success: %v", msg)
 				}
 
-			case 2:
-				// 注销
+			case api.MessageType_UNREGISTER:
+				// 2 注销
 				err := e.dispatch.UnRegister(&model.Node{
 					Name:    msg.Name,
 					Address: msg.Address,
@@ -72,8 +72,8 @@ func (e *masterEngine) handleGrpcServerMessage() {
 					logger.Debugf("unregister node success: %v", msg)
 				}
 
-			case 3:
-				// 心跳
+			case api.MessageType_HEARTBEAT:
+				// 3 心跳
 				err := e.dispatch.Ping(&model.Node{
 					Name:    msg.Name,
 					Address: msg.Address,
@@ -84,10 +84,11 @@ func (e *masterEngine) handleGrpcServerMessage() {
 					logger.Tracef("node ping success: %v", msg)
 				}
 				logger.Tracef("len(e.statusChangeChan): %d", len(e.statusChangeChan))
-			case 4, 5:
-				logger.Debugf("grpc server recv job exec request: %v", msg)
-			case 6:
-				// 执行结果
+			case api.MessageType_EXECUTE, api.MessageType_CANCEL:
+				// 4，5 这里应该是 master 发给 worker 的，如果 worker 发来这个，是不对的
+				logger.Warnf("grpc server recv job exec request: %v", msg)
+			case api.MessageType_RESULT:
+				// 6 执行结果
 				logger.Debugf("grpc server recv job exec result: %v", msg)
 				status, err := model.IntToStatus(int(msg.Result.JobStatus))
 				if err != nil {
@@ -95,8 +96,8 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				}
 				e.statusChangeChan <- model.NewStatusChangeMsg(msg.Result.JobName, int(msg.Result.JobID), status)
 
-			case 7:
-				// 接收到任务的执行日志和修改了的 job detail，保存起来
+			case api.MessageType_LOG:
+				// 7 接收到任务的执行日志和修改了的 job detail，保存起来
 				err := jober.SaveJobLogString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId), msg.Log)
 				if err != nil {
 					logger.Errorf("save job log error: %s", err)
@@ -105,9 +106,11 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				if err != nil {
 					logger.Errorf("save job detail error: %s", err)
 				}
-			case 8:
+			case api.MessageType_ERROR:
+				// 8 接收到任务的执行错误信息
 				logger.Debugf("grpc server recv message: %v", msg)
-			case 9:
+			case api.MessageType_FILE:
+				// 9 接收到文件
 				logger.Debugf("grpc server recv file message, file name: %s", msg.File.Path)
 				err := e.saveFile(msg.File)
 				if err != nil {

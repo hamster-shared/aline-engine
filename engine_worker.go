@@ -58,18 +58,16 @@ func (e *workerEngine) handleGrpcMessage() {
 		for {
 			// 这里只需要处理与任务执行有关的消息
 			switch msg := <-e.rpcClient.RecvMsgChan; msg.Type {
-			case 4:
-				// 接收到 master 节点的执行任务
+			case api.MessageType_EXECUTE:
+				// 4 接收到 master 节点的执行任务
 				logger.Tracef("worker engine receive execute job message: %v", msg)
 				e.executeClient.QueueChan <- model.NewStartQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
 				e.sendLogJobDetail(msg)
 
-			case 5:
-				// 4. 接收到 master 节点的取消任务
+			case api.MessageType_CANCEL:
+				// 5 接收到 master 节点的取消任务
 				logger.Tracef("worker engine receive cancel job message: %v", msg)
 				e.executeClient.QueueChan <- model.NewStopQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
-			case 6:
-			case 7:
 			}
 		}
 	}()
@@ -78,7 +76,7 @@ func (e *workerEngine) handleGrpcMessage() {
 // 向 master 注册自己
 func (e *workerEngine) register() {
 	e.rpcClient.SendMsgChan <- &api.AlineMessage{
-		Type:    1,
+		Type:    api.MessageType_REGISTER,
 		Name:    e.name,
 		Address: e.address,
 	}
@@ -91,7 +89,7 @@ func (e *workerEngine) keepAlive() {
 		for {
 			time.Sleep(time.Second * 30)
 			e.rpcClient.SendMsgChan <- &api.AlineMessage{
-				Type:    3,
+				Type:    api.MessageType_HEARTBEAT,
 				Name:    e.name,
 				Address: e.address,
 			}
@@ -120,7 +118,7 @@ func (e *workerEngine) handleDoneJob() {
 				}
 				for _, report := range reports {
 					e.rpcClient.SendMsgChan <- &api.AlineMessage{
-						Type:    9,
+						Type:    api.MessageType_FILE,
 						Name:    e.name,
 						Address: e.address,
 						File:    report,
@@ -134,7 +132,7 @@ func (e *workerEngine) handleDoneJob() {
 				}
 				for _, artifactory := range artifactorys {
 					e.rpcClient.SendMsgChan <- &api.AlineMessage{
-						Type:    9,
+						Type:    api.MessageType_FILE,
 						Name:    e.name,
 						Address: e.address,
 						File:    artifactory,
@@ -143,7 +141,7 @@ func (e *workerEngine) handleDoneJob() {
 			}
 			// 告诉 master 任务执行完成
 			e.rpcClient.SendMsgChan <- &api.AlineMessage{
-				Type:    6,
+				Type:    api.MessageType_RESULT,
 				Name:    e.name,
 				Address: e.address,
 				Result: &api.ExecuteResult{
@@ -203,7 +201,7 @@ func (e *workerEngine) getLogAndJobDetailMessage(jobName string, jobID int) (*ap
 		return nil, fmt.Errorf("get job detail string failed: %s", err)
 	}
 	return &api.AlineMessage{
-		Type:    7,
+		Type:    api.MessageType_LOG,
 		Name:    e.name,
 		Address: e.address,
 		ExecReq: &api.ExecuteReq{

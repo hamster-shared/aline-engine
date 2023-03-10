@@ -155,7 +155,7 @@ func (d *GrpcDispatcher) SendJob(name, yamlString string, jobDetailID int, node 
 	msg := &api.AlineMessage{
 		Name:    node.Name,
 		Address: node.Address,
-		Type:    4,
+		Type:    api.MessageType_EXECUTE,
 		ExecReq: &api.ExecuteReq{
 			Name:         name,
 			PipelineFile: yamlString,
@@ -176,7 +176,7 @@ func (d *GrpcDispatcher) CancelJobWithNode(name string, jobDetailID int, node *m
 	msg := &api.AlineMessage{
 		Name:    node.Name,
 		Address: node.Address,
-		Type:    5,
+		Type:    api.MessageType_CANCEL,
 		ExecReq: &api.ExecuteReq{
 			Name:        name,
 			JobDetailId: int64(jobDetailID),

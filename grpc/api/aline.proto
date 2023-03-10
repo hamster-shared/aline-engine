@@ -12,16 +12,16 @@ service AlineRPC {
 }
 
 message AlineMessage {
-  // 1: register 客户端发的注册
-  // 2: offline 客户端发的注销
-  // 3: heartbeat 客户端发的心跳
-  // 4: execute 服务端发的执行命令
-  // 5: cancel 服务端发的取消执行命令
-  // 6: executeResultNotify 客户端发的执行结果通知
-  // 7: log 客户端发的日志
-  // 8: 错误
-  // 9: 文件
-  int64 type = 1;
+  // 0: register 客户端发的注册
+  // 1: offline 客户端发的注销
+  // 2: heartbeat 客户端发的心跳
+  // 3: execute 服务端发的执行命令
+  // 4: cancel 服务端发的取消执行命令
+  // 5: executeResultNotify 客户端发的执行结果通知
+  // 6: log 客户端发的日志
+  // 7: 错误
+  // 8: 文件
+  MessageType type = 1;
 
   // registry
   string name = 2;
@@ -64,4 +64,16 @@ message ExecuteResult {
 message File {
   string path = 1;
   bytes data = 2;
+}
+
+enum MessageType {
+  REGISTER = 0;
+  UNREGISTER = 1;
+  HEARTBEAT = 2;
+  EXECUTE = 3;
+  CANCEL = 4;
+  RESULT = 5;
+  LOG = 6;
+  ERROR = 7;
+  FILE = 8;
 }
