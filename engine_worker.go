@@ -68,6 +68,11 @@ func (e *workerEngine) handleGrpcMessage() {
 				// 5 接收到 master 节点的取消任务
 				logger.Tracef("worker engine receive cancel job message: %v", msg)
 				e.executeClient.QueueChan <- model.NewStopQueueMsg(msg.ExecReq.Name, msg.ExecReq.PipelineFile, int(msg.ExecReq.JobDetailId))
+
+			case api.MessageType_STATUS:
+				// master 询问 job 状态
+				logger.Tracef("worker engine receive status job message: %v", msg)
+				e.sendJobStatus(msg)
 			}
 		}
 	}()
@@ -211,4 +216,38 @@ func (e *workerEngine) getLogAndJobDetailMessage(jobName string, jobID int) (*ap
 		},
 		Log: logString,
 	}, nil
+}
+
+func (e *workerEngine) GetJobStatus(jobName string, jobID int) model.Status {
+	return e.executeClient.GetJobStatus(jobName, jobID)
+}
+
+func (e *workerEngine) sendJobStatus(msg *api.AlineMessage) {
+	status := e.GetJobStatus(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+	e.rpcClient.SendMsgChan <- &api.AlineMessage{
+		Type:    api.MessageType_STATUS,
+		Name:    e.name,
+		Address: e.address,
+		Status:  convertStatus(status),
+		ExecReq: &api.ExecuteReq{
+			Name:        msg.ExecReq.Name,
+			JobDetailId: msg.ExecReq.JobDetailId,
+		},
+	}
+}
+
+func convertStatus(status model.Status) api.JobStatus {
+	switch status {
+	case model.STATUS_NOTRUN:
+		return api.JobStatus_NOTRUN
+	case model.STATUS_RUNNING:
+		return api.JobStatus_RUNNING
+	case model.STATUS_FAIL:
+		return api.JobStatus_FAIL
+	case model.STATUS_SUCCESS:
+		return api.JobStatus_SUCCESS
+	case model.STATUS_STOP:
+		return api.JobStatus_STOP
+	}
+	return api.JobStatus_NOTRUN
 }

@@ -30,6 +30,7 @@ type IDispatcher interface {
 	CancelJob(name string, jobDetailID int) (*api.AlineMessage, error)
 	// CancelJobWithNode 通过指定节点取消任务
 	CancelJobWithNode(name string, jobDetailID int, node *model.Node) *api.AlineMessage
+	GetJobStatus(name string, jobDetailID int) (*api.AlineMessage, error)
 }
 
 type GrpcDispatcher struct {
@@ -186,10 +187,41 @@ func (d *GrpcDispatcher) CancelJobWithNode(name string, jobDetailID int, node *m
 }
 
 func (d *GrpcDispatcher) CancelJob(name string, jobDetailID int) (*api.AlineMessage, error) {
-	if nodes, ok := d.JobNodeMap.Load(utils.FormatJobToString(name, jobDetailID)); ok {
-		// 数组中最后一个
-		node := nodes.([]*model.Node)[len(nodes.([]*model.Node))-1]
-		return d.CancelJobWithNode(name, jobDetailID, node), nil
+	node, err := d.GetJobLatestNode(name, jobDetailID)
+	if err != nil {
+		return nil, fmt.Errorf("job %s(%d) not found execute node", name, jobDetailID)
 	}
-	return nil, fmt.Errorf("job %s(%d) not found execute node", name, jobDetailID)
+	return d.CancelJobWithNode(name, jobDetailID, node), nil
+}
+
+// GetJobNode 获取任务执行节点
+func (d *GrpcDispatcher) GetJobNode(name string, jobDetailID int) []*model.Node {
+	if nodes, ok := d.JobNodeMap.Load(utils.FormatJobToString(name, jobDetailID)); ok {
+		return nodes.([]*model.Node)
+	}
+	return nil
+}
+
+func (d *GrpcDispatcher) GetJobLatestNode(name string, id int) (*model.Node, error) {
+	nodes := d.GetJobNode(name, id)
+	if nil == nodes || len(nodes) == 0 {
+		return nil, errors.New("job node not found")
+	}
+	return nodes[len(nodes)-1], nil
+}
+
+func (d *GrpcDispatcher) GetJobStatus(name string, id int) (*api.AlineMessage, error) {
+	node, err := d.GetJobLatestNode(name, id)
+	if err != nil {
+		return nil, err
+	}
+	return &api.AlineMessage{
+		Name:    node.Name,
+		Address: node.Address,
+		Type:    api.MessageType_STATUS,
+		ExecReq: &api.ExecuteReq{
+			Name:        name,
+			JobDetailId: int64(id),
+		},
+	}, nil
 }

@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/hamster-shared/aline-engine/dispatcher"
@@ -10,12 +12,14 @@ import (
 	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type masterEngine struct {
 	dispatch         dispatcher.IDispatcher
 	rpcServer        *server.AlineGrpcServer
 	statusChangeChan chan model.StatusChangeMessage
+	jobStatusMap     sync.Map // key: jobname(id), value: jobStatus
 }
 
 func newMasterEngine(listenAddress string) (*masterEngine, error) {
@@ -116,6 +120,9 @@ func (e *masterEngine) handleGrpcServerMessage() {
 				if err != nil {
 					logger.Errorf("save file error: %s", err)
 				}
+			case api.MessageType_STATUS:
+				// 10 接收到 job 的状态
+				e.jobStatusMap.Store(utils.FormatJobToString(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId)), msg.Status)
 
 			default:
 				logger.Warnf("grpc server recv unknown message: %v", msg)
@@ -197,5 +204,39 @@ func (e *masterEngine) registerStatusChangeHook(hook func(message model.StatusCh
 				hook(msg)
 			}
 		}()
+	}
+}
+
+func (e *masterEngine) getJobStatus(name string, id int) (model.Status, error) {
+	msg, err := e.dispatch.GetJobStatus(name, id)
+	if err != nil {
+		return model.STATUS_NOTRUN, err
+	}
+	e.rpcServer.SendMsgChan <- msg
+	for i := 0; i < 10; i++ {
+		status, ok := e.jobStatusMap.Load(utils.FormatJobToString(name, id))
+		if ok {
+			e.jobStatusMap.Delete(utils.FormatJobToString(name, id))
+			return convertJobStatus(status.(api.JobStatus)), nil
+		}
+		time.Sleep(time.Second)
+	}
+	return model.STATUS_NOTRUN, fmt.Errorf("get job status timeout")
+}
+
+func convertJobStatus(status api.JobStatus) model.Status {
+	switch status {
+	case api.JobStatus_NOTRUN:
+		return model.STATUS_NOTRUN
+	case api.JobStatus_RUNNING:
+		return model.STATUS_RUNNING
+	case api.JobStatus_FAIL:
+		return model.STATUS_FAIL
+	case api.JobStatus_SUCCESS:
+		return model.STATUS_SUCCESS
+	case api.JobStatus_STOP:
+		return model.STATUS_STOP
+	default:
+		return model.STATUS_NOTRUN
 	}
 }

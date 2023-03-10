@@ -37,6 +37,7 @@ message AlineMessage {
 
   string error = 7;
   File file = 8;
+  JobStatus status = 9;
 }
 
 message ExecuteReq {
@@ -76,4 +77,13 @@ enum MessageType {
   LOG = 6;
   ERROR = 7;
   FILE = 8;
+  STATUS = 9;
+}
+
+enum JobStatus {
+  NOTRUN = 0;
+  RUNNING = 1;
+  FAIL = 2;
+  SUCCESS = 3;
+  STOP = 4;
 }

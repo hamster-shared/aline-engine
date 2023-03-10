@@ -28,6 +28,7 @@ type Engine interface {
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
 	TerminalJob(name string, id int) error
+	GetJobStatus(jobName string, jobID int) model.Status
 }
 
 type Role int
@@ -179,4 +180,15 @@ func readLogLevelFromEnv() logrus.Level {
 		return logrus.InfoLevel
 	}
 	return level
+}
+
+func (e *engine) GetJobStatus(jobName string, jobID int) model.Status {
+	if e.role == RoleWorker {
+		return e.worker.GetJobStatus(jobName, jobID)
+	}
+	status, err := e.master.getJobStatus(jobName, jobID)
+	if err != nil {
+		return model.STATUS_NOTRUN
+	}
+	return status
 }

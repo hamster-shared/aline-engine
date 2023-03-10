@@ -31,6 +31,10 @@ func (c *ExecutorClient) GetStatusChangeChan() chan model.StatusChangeMessage {
 	return c.executor.StatusChan
 }
 
+func (c *ExecutorClient) GetJobStatus(jobName string, jobID int) model.Status {
+	return c.executor.GetJobStatus(jobName, jobID)
+}
+
 func (c *ExecutorClient) handleJobQueue() {
 	for {
 		// 监听队列

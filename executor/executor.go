@@ -97,7 +97,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	executeAction := func(ah action.ActionHandler, job *model.JobDetail) (err error) {
 		// 延迟处理的函数
 		defer func() {
-			// 发生宕机时，获取panic传递的上下文并打印
+			// 发生宕机时，获取 panic 传递的上下文并打印
 			rErr := recover()
 			switch rErr.(type) {
 			case runtime.Error: // 运行时错误
@@ -265,4 +265,12 @@ func (e *Executor) Cancel(jobName string, id int) error {
 	}
 	e.StatusChan <- model.NewStatusChangeMsg(jobName, id, model.STATUS_STOP)
 	return nil
+}
+
+func (e *Executor) GetJobStatus(jobName string, jobID int) model.Status {
+	_, ok := e.cancelMap[strings.Join([]string{jobName, strconv.Itoa(jobID)}, "/")]
+	if ok {
+		return model.STATUS_RUNNING
+	}
+	return model.STATUS_NOTRUN
 }
