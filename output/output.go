@@ -71,7 +71,7 @@ func New(name string, id int) *Output {
 
 	o.timedWriteFile()
 
-	o.WriteLine("[Job] Started on " + o.timeConsuming.StartTime.Format("2006-01-02 15:04:05"))
+	o.WriteLineWithNoTime("[Job] Started on " + o.timeConsuming.StartTime.Format("2006-01-02 15:04:05"))
 
 	return o
 }
@@ -116,7 +116,7 @@ func (o *Output) Done() {
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stageTimeConsuming[k] = v
-			o.WriteLine(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
+			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
 		}
 	}
 
@@ -138,6 +138,14 @@ func (o *Output) WriteLine(line string) {
 		line += "\n"
 	}
 	o.buffer = append(o.buffer, timeFormat+line)
+}
+
+func (o *Output) WriteLineWithNoTime(line string) {
+	// 如果不是以换行符结尾，自动添加
+	if !strings.HasSuffix(line, "\n") {
+		line += "\n"
+	}
+	o.buffer = append(o.buffer, line)
 }
 
 // WriteCommandLine 将一行命令行内容写入输出，其实就是在前面加上了一个 "> "
@@ -172,17 +180,17 @@ func (o *Output) NewStage(name string) {
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stageTimeConsuming[k] = v
-			o.WriteLine(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
-			o.WriteLine("} ")
+			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
+			o.WriteLineWithNoTime("} ")
 		}
 	}
 
-	o.WriteLine("\n")
-	o.WriteLine("[Pipeline] Stage: " + name)
-	o.WriteLine("{ ")
+	o.WriteLineWithNoTime("\n")
+	o.WriteLineWithNoTime("[Pipeline] Stage: " + name)
+	o.WriteLineWithNoTime("{ ")
 
 	startTime := time.Now().Local()
-	o.WriteLine("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
+	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
 	o.stageTimeConsuming[name] = TimeConsuming{
 		StartTime: startTime,
 	}
@@ -198,16 +206,16 @@ func (o *Output) NewStep(name string) {
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stepTimeConsuming[k] = v
-			o.WriteLine(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
+			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
 		}
 	}
 
-	o.WriteLine("\n")
-	o.WriteLine("\n")
-	o.WriteLine("\n")
-	o.WriteLine("[Pipeline]     Step: " + name)
+	o.WriteLineWithNoTime("\n")
+	o.WriteLineWithNoTime("\n")
+	o.WriteLineWithNoTime("\n")
+	o.WriteLineWithNoTime("[Pipeline]     Step: " + name)
 	startTime := time.Now().Local()
-	o.WriteLine("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
+	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
 	o.stepTimeConsuming[name] = TimeConsuming{
 		StartTime: startTime,
 	}
