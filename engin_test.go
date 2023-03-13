@@ -112,6 +112,19 @@ func TestEngineWork(t *testing.T) {
 			// assert.NilError(t, err)
 		}
 	}()
+	go func() {
+		var i int
+		for {
+			time.Sleep(1 * time.Second)
+			status, err := e.GetJobStatus("hello-world", i)
+			if err != nil {
+				t.Errorf("get job status error: %v", err)
+				continue
+			}
+			t.Logf("job status %s %d: %v", "hello-world", i, status)
+			i++
+		}
+	}()
 	http.ListenAndServe("0.0.0.0:6060", nil)
 }
 

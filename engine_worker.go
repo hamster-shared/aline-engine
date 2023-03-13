@@ -218,12 +218,16 @@ func (e *workerEngine) getLogAndJobDetailMessage(jobName string, jobID int) (*ap
 	}, nil
 }
 
-func (e *workerEngine) GetJobStatus(jobName string, jobID int) model.Status {
+func (e *workerEngine) GetJobStatus(jobName string, jobID int) (model.Status, error) {
 	return e.executeClient.GetJobStatus(jobName, jobID)
 }
 
 func (e *workerEngine) sendJobStatus(msg *api.AlineMessage) {
-	status := e.GetJobStatus(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+	status, err := e.GetJobStatus(msg.ExecReq.Name, int(msg.ExecReq.JobDetailId))
+	if err != nil {
+		logger.Errorf("get job %s-%d status error: %s", msg.ExecReq.Name, msg.ExecReq.JobDetailId, err.Error())
+		status = model.STATUS_NOTRUN
+	}
 	e.rpcClient.SendMsgChan <- &api.AlineMessage{
 		Type:    api.MessageType_STATUS,
 		Name:    e.name,

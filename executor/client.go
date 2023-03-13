@@ -31,7 +31,7 @@ func (c *ExecutorClient) GetStatusChangeChan() chan model.StatusChangeMessage {
 	return c.executor.StatusChan
 }
 
-func (c *ExecutorClient) GetJobStatus(jobName string, jobID int) model.Status {
+func (c *ExecutorClient) GetJobStatus(jobName string, jobID int) (model.Status, error) {
 	return c.executor.GetJobStatus(jobName, jobID)
 }
 

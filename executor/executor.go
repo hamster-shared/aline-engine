@@ -267,10 +267,10 @@ func (e *Executor) Cancel(jobName string, id int) error {
 	return nil
 }
 
-func (e *Executor) GetJobStatus(jobName string, jobID int) model.Status {
+func (e *Executor) GetJobStatus(jobName string, jobID int) (model.Status, error) {
 	_, ok := e.cancelMap[strings.Join([]string{jobName, strconv.Itoa(jobID)}, "/")]
 	if ok {
-		return model.STATUS_RUNNING
+		return model.STATUS_RUNNING, nil
 	}
-	return model.STATUS_NOTRUN
+	return model.STATUS_NOTRUN, fmt.Errorf("job not found")
 }
