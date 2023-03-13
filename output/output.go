@@ -132,11 +132,12 @@ func (o *Output) Done() {
 
 // WriteLine 将一行普通内容写入输出
 func (o *Output) WriteLine(line string) {
+	timeFormat := fmt.Sprintf("[%s] ", time.Now().Local().Format("2006-01-02 15:04:05"))
 	// 如果不是以换行符结尾，自动添加
 	if !strings.HasSuffix(line, "\n") {
 		line += "\n"
 	}
-	o.buffer = append(o.buffer, line)
+	o.buffer = append(o.buffer, timeFormat+line)
 }
 
 // WriteCommandLine 将一行命令行内容写入输出，其实就是在前面加上了一个 "> "
