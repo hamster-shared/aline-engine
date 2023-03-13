@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/model"
 	"github.com/sirupsen/logrus"
 	"gotest.tools/v3/assert"
 )
@@ -95,35 +97,34 @@ import (
 // 	// 	}
 // 	// }
 
-// 	time.Sleep(1000 * time.Second)
-// }
-
+//		time.Sleep(1000 * time.Second)
+//	}
 func TestEngineWork(t *testing.T) {
 	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
 	e, err := NewMasterEngine(50001)
 	assert.NilError(t, err)
+	createJob(e)
 	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			_, err = e.ExecuteJob("hello-world")
-			if err != nil {
-				logger.Error("--------------------", err)
-			}
-			// assert.NilError(t, err)
+		_, err = e.ExecuteJob("hello1")
+		if err != nil {
+			t.Errorf("execute job error: %v", err)
 		}
+		// time.Sleep(120 * time.Second)
 	}()
+	http.ListenAndServe("0.0.0.0:6060", nil)
+}
+
+func TestEngineStepTimeoutCancel(t *testing.T) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	e, err := NewMasterEngine(50001)
+	assert.NilError(t, err)
+	createJob(e)
 	go func() {
-		var i int
-		for {
-			time.Sleep(1 * time.Second)
-			status, err := e.GetJobStatus("hello-world", i)
-			if err != nil {
-				t.Errorf("get job status error: %v", err)
-				continue
-			}
-			t.Logf("job status %s %d: %v", "hello-world", i, status)
-			i++
+		_, err = e.ExecuteJob("hello1")
+		if err != nil {
+			t.Errorf("execute job error: %v", err)
 		}
+		// time.Sleep(120 * time.Second)
 	}()
 	http.ListenAndServe("0.0.0.0:6060", nil)
 }
@@ -133,4 +134,53 @@ func TestWorkerEngineWork(t *testing.T) {
 	_, err := NewWorkerEngine("0.0.0.0:50001")
 	assert.NilError(t, err)
 	time.Sleep(1000 * time.Second)
+}
+
+func createJob(e Engine) {
+	data, err := os.ReadFile("test.yml")
+	if err != nil {
+		panic(err)
+	}
+	err = e.CreateJob("hello1", string(data))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestEngineGetJobStatus(t *testing.T) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	e, err := NewMasterEngine(50001)
+	assert.NilError(t, err)
+	createJob(e)
+	var jobDetail *model.JobDetail
+	go func() {
+		jobDetail, err = e.ExecuteJob("hello1")
+		if err != nil {
+			t.Errorf("execute job error: %v", err)
+		}
+	}()
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			status, err := e.GetCurrentJobStatus("hello1", jobDetail.Id)
+			if err != nil {
+				t.Errorf("get job status error: %v", err)
+			}
+			t.Logf("job status: %v", status)
+		}
+	}()
+	http.ListenAndServe("0.0.0.0:6060", nil)
+}
+
+func TestEngineGetJobStatusWithCustom(t *testing.T) {
+	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	e, err := NewMasterEngine(50001)
+	assert.NilError(t, err)
+	time.Sleep(time.Second)
+
+	status, err := e.GetCurrentJobStatus("hello1", 39)
+	if err != nil {
+		t.Errorf("get job status error: %v", err)
+	}
+	t.Logf("job status: %v", status)
 }

@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/hamster-shared/aline-engine/consts"
 )
@@ -145,9 +147,13 @@ func FormatJobToString(name string, id int) string {
 }
 
 func GetJobNameAndIDFromFormatString(str string) (string, int, error) {
-	var name string
-	var id int
-	_, err := fmt.Sscanf(str, "%s(%d)", &name, &id)
+	// name(id)
+	splitString := strings.Split(str, "(")
+	if len(splitString) != 2 {
+		return "", 0, fmt.Errorf("format error")
+	}
+	name := splitString[0]
+	id, err := strconv.Atoi(strings.TrimRight(splitString[1], ")"))
 	if err != nil {
 		return "", 0, err
 	}

@@ -64,5 +64,5 @@ var InkUrlMap = map[string]string{
 }
 
 const (
-	STEP_TIMEOUT_MINUTE = 30 // 单位为分钟
+	STEP_TIMEOUT_MINUTE = 1 // 单位为分钟
 )

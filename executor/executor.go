@@ -271,6 +271,8 @@ func (e *Executor) Cancel(jobName string, id int) error {
 	cancel, ok := e.cancelMap[strings.Join([]string{jobName, strconv.Itoa(id)}, "/")]
 	if ok {
 		cancel()
+		// 删除
+		delete(e.cancelMap, strings.Join([]string{jobName, strconv.Itoa(id)}, "/"))
 	}
 	e.StatusChan <- model.NewStatusChangeMsg(jobName, id, model.STATUS_STOP)
 	return nil
@@ -302,6 +304,7 @@ func (e *Executor) handleTimerListener() {
 			}
 			return true
 		})
+		time.Sleep(time.Minute)
 	}
 }
 

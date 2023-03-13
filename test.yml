@@ -1,7 +1,10 @@
 version: 1.0
-name: hello-world
+name: hello1
 stages:
   say-hello:
     steps:
       - name: say-hello
-        runs-on: hello-world
+        run: |
+          echo "Hello World!"
+          # sleep 2 minutes
+          sleep 120

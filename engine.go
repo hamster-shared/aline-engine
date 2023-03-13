@@ -28,7 +28,7 @@ type Engine interface {
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
 	TerminalJob(name string, id int) error
-	GetJobStatus(jobName string, jobID int) (model.Status, error)
+	GetCurrentJobStatus(jobName string, jobID int) (model.Status, error)
 }
 
 type Role int
@@ -182,7 +182,8 @@ func readLogLevelFromEnv() logrus.Level {
 	return level
 }
 
-func (e *engine) GetJobStatus(jobName string, jobID int) (model.Status, error) {
+// GetCurrentJobStatus 获取当前任务的状态，不能获取历史任务的状态
+func (e *engine) GetCurrentJobStatus(jobName string, jobID int) (model.Status, error) {
 	if e.role == RoleWorker {
 		return e.worker.GetJobStatus(jobName, jobID)
 	}
