@@ -8,9 +8,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hamster-shared/aline-engine/action"
+	"github.com/hamster-shared/aline-engine/consts"
 	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
@@ -27,8 +29,9 @@ type IExecutor interface {
 }
 
 type Executor struct {
-	cancelMap  map[string]func()
-	StatusChan chan model.StatusChangeMessage
+	cancelMap    map[string]func() // key: jobName/jobID, value: cancelFunc
+	StatusChan   chan model.StatusChangeMessage
+	stepTimerMap sync.Map // key: jobName/jobID, value: stepTimer
 }
 
 // Execute 执行任务
@@ -52,11 +55,14 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		// 将执行结果发送到 StatusChan，worker 会监听该 chan，将结果发送到 grpc server
 		e.StatusChan <- model.NewStatusChangeMsg(jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
 		logger.Infof("send status change message to chan, job name: %s, job id: %d, status: %d", jobWrapper.Name, jobWrapper.Id, jobWrapper.Status)
+		// step 定时器也需要删除，避免出现意料之外的报错
+		e.stepTimerMap.Delete(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id))
 	}()
 
 	if err != nil {
 		return err
 	}
+	go e.handleTimerListener()
 
 	// 2. 初始化 执行器的上下文
 
@@ -166,6 +172,9 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
+			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
+			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
+			e.stepTimerMap.Store(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id), newStepTimer())
 			if step.Uses == "" || step.Uses == "shell" {
 				ah = action.NewShellAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "git-checkout" {
@@ -273,4 +282,39 @@ func (e *Executor) GetJobStatus(jobName string, jobID int) (model.Status, error)
 		return model.STATUS_RUNNING, nil
 	}
 	return model.STATUS_NOTRUN, fmt.Errorf("job not found")
+}
+
+func (e *Executor) handleTimerListener() {
+	for {
+		e.stepTimerMap.Range(func(key, value any) bool {
+			timer := value.(*stepTimer)
+			if timer.isTimeout() {
+				name, id, err := utils.GetJobNameAndIDFromFormatString(key.(string))
+				if err != nil {
+					logger.Errorf("get job name and id from format string error: %v, key: %s", err, key.(string))
+					return true
+				}
+				err = e.Cancel(name, id)
+				if err != nil {
+					logger.Errorf("cancel job error: %v, key: %s", err, key.(string))
+				}
+				e.stepTimerMap.Delete(key)
+			}
+			return true
+		})
+	}
+}
+
+type stepTimer struct {
+	startTime time.Time
+}
+
+func newStepTimer() *stepTimer {
+	return &stepTimer{
+		startTime: time.Now(),
+	}
+}
+
+func (t *stepTimer) isTimeout() bool {
+	return time.Since(t.startTime) > time.Minute*consts.STEP_TIMEOUT_MINUTE
 }

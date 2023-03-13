@@ -62,3 +62,7 @@ var InkUrlMap = map[string]string{
 	"Shibuya": "wss://rpc.shibuya.astar.network",
 	"Shiden":  "wss://rpc.shiden.astar.network",
 }
+
+const (
+	STEP_TIMEOUT_MINUTE = 30 // 单位为分钟
+)

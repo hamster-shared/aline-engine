@@ -143,3 +143,13 @@ func GetNodeKey(name, address string) string {
 func FormatJobToString(name string, id int) string {
 	return fmt.Sprintf("%s(%d)", name, id)
 }
+
+func GetJobNameAndIDFromFormatString(str string) (string, int, error) {
+	var name string
+	var id int
+	_, err := fmt.Sscanf(str, "%s(%d)", &name, &id)
+	if err != nil {
+		return "", 0, err
+	}
+	return name, id, nil
+}

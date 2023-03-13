@@ -5,15 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/model"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
+
+	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type OpenAiRequestBody struct {
@@ -245,7 +246,7 @@ type OpenAiChatResponseBody struct {
 	} `json:"choices"`
 }
 
-// Post 执行后清理 (无论执行是否成功，都应该有Post的清理)
+// Post 执行后清理 (无论执行是否成功，都应该有 Post 的清理)
 func (a *OpenaiAction) Post() error {
 
 	return nil
