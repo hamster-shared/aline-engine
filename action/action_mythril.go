@@ -135,7 +135,7 @@ func (a *MythRilAction) Hook() (*model.ActionResult, error) {
 		}
 		fields := strings.Fields(command)
 		out, err := a.ExecuteCommand(fields, workdir)
-		if err != nil {
+		if out == "" && err != nil {
 			return nil, err
 		}
 		create, err := os.Create(dest)
