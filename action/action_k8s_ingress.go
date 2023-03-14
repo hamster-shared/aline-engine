@@ -11,7 +11,6 @@ import (
 	"github.com/hamster-shared/aline-engine/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
 )
 
 type K8sIngressAction struct {
@@ -61,23 +60,19 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 		return nil, err
 	}
 	serviceName := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
-	service, err := utils.CreateIngress(client, k.namespace, serviceName, k.gateway, servicePorts)
+	_, err = utils.CreateIngress(client, k.namespace, serviceName, k.gateway, servicePorts)
 	if err != nil {
 		logger.Errorf("k8s create ingress  failed: %s", err.Error())
 		return nil, err
 	}
+	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
 	for {
+		service, _ := client.CoreV1().Services(k.namespace).Get(context.Background(), name, metav1.GetOptions{})
 		pods, _ := client.CoreV1().Pods(k.namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("app=%s", service.ObjectMeta.Name),
 		})
-		log.Println("++++++++++++++++++++++++")
-		log.Println(len(pods.Items))
-		log.Println("++++++++++++++++++++++++")
 		if len(pods.Items) > 0 {
 			if pods.Items[0].Status.Phase == corev1.PodRunning {
-				log.Println("------------------------------")
-				log.Println(pods.Items[0].Status.Phase)
-				log.Println("------------------------------")
 				break
 			}
 			if pods.Items[0].Status.Phase == corev1.PodFailed {
@@ -90,9 +85,6 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 		Url: fmt.Sprintf("http://%s.%s", serviceName, k.gateway),
 	}
 	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
-	log.Println("********************")
-	log.Println(actionResult)
-	log.Println("********************")
 	return actionResult, nil
 }
 func (k *K8sIngressAction) Post() error {
