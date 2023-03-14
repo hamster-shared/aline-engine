@@ -204,6 +204,9 @@ func (a *MythRilAction) Post() error {
 			if strings.Contains(s, "The analysis was completed successfully") {
 				break
 			}
+			if strings.Contains(s, "====") {
+				break
+			}
 			var styleGuideValidationsReportDetails model.ContractStyleGuideValidationsReportDetails
 			styleGuideValidationsReportDetails.Tool = consts.MythRilCheckOutputDir
 			if strings.Contains(s, "Error:") || strings.Contains(s, "Note:") {
