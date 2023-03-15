@@ -45,6 +45,8 @@ func (i *ImagePushAction) Hook() (*model.ActionResult, error) {
 	if err != nil {
 		return nil, errors.New("docker push image failed")
 	}
+	imageDeleteCommands := []string{"docker", "rmi", i.imageName}
+	i.ExecuteCommand(imageDeleteCommands, workdir)
 	actionResult := &model.ActionResult{
 		Artifactorys: []model.Artifactory{
 			{
