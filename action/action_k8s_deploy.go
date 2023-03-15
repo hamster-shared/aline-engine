@@ -48,34 +48,40 @@ func (k *K8sDeployAction) Pre() error {
 func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 	client, err := utils.InitK8sClient()
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s client init failed, %s", err.Error()))
 		logger.Errorf("init k8s client failed: %s", err.Error())
 		return nil, err
 	}
 	err = utils.CreateNamespace(client, k.namespace)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s create namespace failed, %s", err.Error()))
 		logger.Errorf("k8s create namespace failed: %s", err.Error())
 		return nil, err
 	}
 	var containers []corev1.Container
 	err = json.Unmarshal([]byte(k.containers), &containers)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s containers format failed, %s", err.Error()))
 		logger.Errorf("k8s containers format failed: %s", err.Error())
 		return nil, err
 	}
 	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
 	_, err = utils.CreateDeployment(client, k.namespace, name, containers)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: create service failed, %s", err.Error()))
 		logger.Errorf("k8s create deployment failed: %s", err.Error())
 		return nil, err
 	}
 	var servicePorts []corev1.ServicePort
 	err = json.Unmarshal([]byte(k.servicePorts), &servicePorts)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s service ports format failed, %s", err.Error()))
 		logger.Errorf("k8s service ports format failed: %s", err.Error())
 		return nil, err
 	}
 	err = utils.CreateService(client, k.namespace, name, servicePorts)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: create service failed, %s", err.Error()))
 		logger.Errorf("k8s create service failed: %s", err.Error())
 		return nil, err
 	}

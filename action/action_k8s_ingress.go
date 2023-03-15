@@ -51,18 +51,21 @@ func (k *K8sIngressAction) Pre() error {
 func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 	client, err := utils.InitK8sClient()
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s client init failed, %s", err.Error()))
 		logger.Errorf("init k8s client failed: %s", err.Error())
 		return nil, err
 	}
 	var servicePorts []corev1.ServicePort
 	err = json.Unmarshal([]byte(k.servicePorts), &servicePorts)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s service ports format failed, %s", err.Error()))
 		logger.Errorf("k8s service ports format failed: %s", err.Error())
 		return nil, err
 	}
 	serviceName := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
 	_, err = utils.CreateIngress(client, k.namespace, serviceName, k.gateway, servicePorts)
 	if err != nil {
+		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s create ingress failed, %s", err.Error()))
 		logger.Errorf("k8s create ingress  failed: %s", err.Error())
 		return nil, err
 	}
