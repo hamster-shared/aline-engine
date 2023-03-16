@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hamster-shared/aline-engine/logger"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -132,7 +132,7 @@ func askOpenAi(file string) string {
 
 	request, err := http.NewRequest("POST", url, bodyReader)
 	if err != nil {
-		log.Println("http.NewRequest,[err=%s][url=%s]", err, url)
+		logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
 		return ""
 	}
 	request.Header.Set("Connection", "Keep-Alive")
@@ -142,7 +142,7 @@ func askOpenAi(file string) string {
 	var resp *http.Response
 	resp, err = http.DefaultClient.Do(request)
 	if err != nil {
-		log.Printf("http.Do failed,[err=%s][url=%s]\n", err, url)
+		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
 		return ""
 	}
 	defer func(Body io.ReadCloser) {
@@ -187,7 +187,7 @@ func askOpenAiChat(file string) string {
 
 	request, err := http.NewRequest("POST", url, bodyReader)
 	if err != nil {
-		log.Println("http.NewRequest,[err=%s][url=%s]", err, url)
+		logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
 		return ""
 	}
 	request.Header.Set("Connection", "Keep-Alive")
@@ -196,8 +196,13 @@ func askOpenAiChat(file string) string {
 	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
 	var resp *http.Response
 	resp, err = http.DefaultClient.Do(request)
+	b, err := io.ReadAll(resp.Body)
+
+	logger.Info("openai response code: ", resp.StatusCode)
+	logger.Info("openai response content: ", string(b))
+
 	if err != nil {
-		log.Printf("http.Do failed,[err=%s][url=%s]\n", err, url)
+		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
 		return ""
 	}
 	defer func(Body io.ReadCloser) {
@@ -210,8 +215,6 @@ func askOpenAiChat(file string) string {
 	if resp.StatusCode != 200 {
 		return ""
 	}
-
-	b, err := io.ReadAll(resp.Body)
 
 	var apResponse OpenAiChatResponseBody
 	_ = json.Unmarshal(b, &apResponse)
