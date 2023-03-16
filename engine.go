@@ -189,3 +189,11 @@ func (e *engine) GetCurrentJobStatus(jobName string, jobID int) (model.Status, e
 	}
 	return e.master.getJobStatus(jobName, jobID)
 }
+
+// 校验是不是有效的 worker
+func (e *engine) IsValidWorker(w string) bool {
+	if e.role == RoleWorker {
+		return false
+	}
+	return e.master.isValidWorker(w)
+}
