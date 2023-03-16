@@ -3,14 +3,15 @@ package output
 import (
 	"bufio"
 	"fmt"
-	"github.com/hamster-shared/aline-engine/consts"
-	"github.com/hamster-shared/aline-engine/logger"
-	"github.com/hamster-shared/aline-engine/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/logger"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type Output struct {
@@ -23,7 +24,6 @@ type Output struct {
 	fileCursor         int
 	bufferCursor       int
 	stageTimeConsuming map[string]TimeConsuming
-	stepTimeConsuming  map[string]TimeConsuming
 	timeConsuming      TimeConsuming
 }
 
@@ -31,16 +31,21 @@ type Log struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Duration  time.Duration
-	Stages    []StageOutput
+	Stages    []Stage
 	Lines     []string
 }
 
-type StageOutput struct {
+type Stage struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Duration  time.Duration
 	Name      string
 	Lines     []string
+}
+
+type Step struct {
+	Name  string
+	Lines []string
 }
 
 type TimeConsuming struct {
@@ -60,7 +65,7 @@ func New(name string, id int) *Output {
 			StartTime: time.Now().Local(),
 		},
 		stageTimeConsuming: make(map[string]TimeConsuming),
-		stepTimeConsuming:  make(map[string]TimeConsuming),
+		// stepTimeConsuming:  make(map[string]TimeConsuming),
 	}
 
 	err := o.initFile()
@@ -125,7 +130,7 @@ func (o *Output) Done() {
 	o.timeConsuming.EndTime = now
 	o.timeConsuming.Duration = now.Sub(o.timeConsuming.StartTime)
 	o.flush(o.buffer[o.fileCursor:])
-	o.flush([]string{fmt.Sprintf("\n\n\n[Job] Finished on %s, Duration: %s", now.Format("2006-01-02 15:04:05"), o.timeConsuming.Duration)})
+	o.flush([]string{fmt.Sprintf("\n[Job] Finished on %s, Duration: %s\n\n", now.Format("2006-01-02 15:04:05"), o.timeConsuming.Duration)})
 	o.f.Close()
 	o.mu.Unlock()
 }
@@ -172,7 +177,6 @@ func (o *Output) NewContent() string {
 
 // NewStage 会写入以 [Pipeline] Stage: 开头的一行，表示一个新的 Stage 开始
 func (o *Output) NewStage(name string) {
-
 	// 将之前的 Stage 标记为完成
 	for k, v := range o.stageTimeConsuming {
 		if !v.Done {
@@ -181,13 +185,13 @@ func (o *Output) NewStage(name string) {
 			v.Done = true
 			o.stageTimeConsuming[k] = v
 			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
-			o.WriteLineWithNoTime("} ")
+			// o.WriteLineWithNoTime("} ")
 		}
 	}
 
 	o.WriteLineWithNoTime("\n")
 	o.WriteLineWithNoTime("[Pipeline] Stage: " + name)
-	o.WriteLineWithNoTime("{ ")
+	// o.WriteLineWithNoTime("{ ")
 
 	startTime := time.Now().Local()
 	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
@@ -196,29 +200,9 @@ func (o *Output) NewStage(name string) {
 	}
 }
 
-// NewStep 会写入以 [Pipeline] Stage: 开头的一行，表示一个新的 Stage 开始
+// NewStep 会写入以 [Pipeline] Step: 开头的一行，表示一个新的 Step 开始
 func (o *Output) NewStep(name string) {
-
-	// 将之前的 Stage 标记为完成
-	for k, v := range o.stepTimeConsuming {
-		if !v.Done {
-			v.EndTime = time.Now().Local()
-			v.Duration = v.EndTime.Sub(v.StartTime)
-			v.Done = true
-			o.stepTimeConsuming[k] = v
-			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
-		}
-	}
-
-	o.WriteLineWithNoTime("\n")
-	o.WriteLineWithNoTime("\n")
-	o.WriteLineWithNoTime("\n")
-	o.WriteLineWithNoTime("[Pipeline]     Step: " + name)
-	startTime := time.Now().Local()
-	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
-	o.stepTimeConsuming[name] = TimeConsuming{
-		StartTime: startTime,
-	}
+	o.WriteLineWithNoTime("[Pipeline] Step: " + name)
 }
 
 // 在一个协程中定时刷入文件
@@ -234,7 +218,7 @@ func (o *Output) timedWriteFile() {
 			o.mu.Unlock()
 
 			if len(o.buffer) <= endIndex {
-				time.Sleep(1 * time.Second)
+				time.Sleep(500 * time.Millisecond)
 				continue
 			}
 
@@ -244,7 +228,7 @@ func (o *Output) timedWriteFile() {
 				logger.Error(err)
 			}
 			o.fileCursor = endIndex
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}(endIndex)
 }
@@ -299,11 +283,11 @@ func (o *Output) Filename() string {
 }
 
 // StageOutputList 返回存储了 Stage 输出的列表
-func (o *Output) StageOutputList() []StageOutput {
+func (o *Output) StageOutputList() []Stage {
 	return parseLogLines(o.buffer[:]).Stages
 }
 
-// ParseLogFile 解析日志文件，返回存储了 Stage 输出的列表
+// ParseLogFile 解析日志文件，返回 Log 对象
 func ParseLogFile(filename string) (Log, error) {
 	lines, err := ReadFileLines(filename)
 	if err != nil {
@@ -390,7 +374,7 @@ func parseLogLines(lines []string) Log {
 					}
 				}
 
-				stageOutput := StageOutput{
+				stageOutput := Stage{
 					Name:      k,
 					Lines:     v,
 					StartTime: startTime,
@@ -403,4 +387,37 @@ func parseLogLines(lines []string) Log {
 	}
 
 	return log
+}
+
+// ParseStageSteps 解析一个 stage 中的 step
+func ParseStageSteps(stage *Stage) []*Step {
+	var stepNameList []string
+	var stepMap = make(map[string]*Step)
+	for _, s := range stage.Lines {
+		if strings.HasPrefix("[TimeConsuming]", s) {
+			continue
+		}
+		// 如果以 [Pipeline] Step: 开头，那么就是一个 step
+		if strings.HasPrefix(s, "[Pipeline] Step: ") {
+			stepName := strings.TrimPrefix(s, "[Pipeline] Step: ")
+			stepNameList = append(stepNameList, stepName)
+			stepMap[stepName] = &Step{Name: stepName}
+			continue
+		}
+		if len(stepNameList) == 0 {
+			continue
+		}
+		stepName := stepNameList[len(stepNameList)-1]
+		step := stepMap[stepName]
+		step.Lines = append(step.Lines, s)
+	}
+	var result []*Step
+	for i := range stepNameList {
+		for k, v := range stepMap {
+			if k == stepNameList[i] {
+				result = append(result, v)
+			}
+		}
+	}
+	return result
 }
