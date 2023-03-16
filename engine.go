@@ -29,6 +29,7 @@ type Engine interface {
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
 	TerminalJob(name string, id int) error
 	GetCurrentJobStatus(jobName string, jobID int) (model.Status, error)
+	IsValidWorker(w string) bool
 }
 
 type Role int
