@@ -2,16 +2,17 @@ package output
 
 import (
 	"fmt"
-	"github.com/hamster-shared/aline-engine/logger"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/sirupsen/logrus"
 )
 
 func TestNew(t *testing.T) {
-	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
+	logger.Init().ToStdout().SetLevel(logrus.TraceLevel)
 	testOutput := New("test", 10001)
 
 	testOutput.NewStage("第一阶段")
@@ -147,4 +148,88 @@ func TestTimeInfo(t *testing.T) {
 	if !testOutput.stageTimeConsuming["第一阶段"].Done {
 		t.Error("stage time info done error")
 	}
+}
+
+func TestNewStep(t *testing.T) {
+	logger.Init().ToStdout().SetLevel(logrus.TraceLevel)
+	testOutput := New("test", 10009)
+
+	testOutput.NewStage("第一阶段")
+
+	testOutput.NewStep("步骤 1")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+
+	testOutput.NewStep("步骤 2")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+	time.Sleep(1 * time.Second)
+
+	testOutput.NewStage("第二阶段")
+
+	testOutput.NewStep("步骤 1")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+
+	testOutput.NewStep("步骤 2")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+	time.Sleep(1 * time.Second)
+
+	testOutput.NewStage("第三阶段")
+
+	testOutput.NewStep("步骤 1")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+
+	testOutput.NewStep("步骤 2")
+	testOutput.WriteLine("第一行")
+	testOutput.WriteLine("第二行")
+	testOutput.WriteLine("第三行")
+	testOutput.WriteLine("第四行")
+	testOutput.WriteLine("第五行")
+	time.Sleep(1 * time.Second)
+
+	testOutput.Done()
+
+	fmt.Println("文件写入到", testOutput.Filename())
+}
+
+func Test_parseStageSteps(t *testing.T) {
+	str := `
+[Pipeline] Stage: 第一阶段
+[TimeConsuming] StartTime: 2023-03-16 16:47:31
+[Pipeline] Step: 步骤 1
+[2023-03-16 16:47:31] 第一行
+[2023-03-16 16:47:31] 第二行
+[2023-03-16 16:47:31] 第三行
+[2023-03-16 16:47:31] 第四行
+[2023-03-16 16:47:31] 第五行
+[Pipeline] Step: 步骤 2
+[2023-03-16 16:47:31] 第一行
+[2023-03-16 16:47:31] 第二行
+[2023-03-16 16:47:31] 第三行
+[2023-03-16 16:47:31] 第四行
+[2023-03-16 16:47:31] 第五行
+[TimeConsuming] EndTime: 2023-03-16 16:47:32, Duration: 1.000173146s
+`
+	l := parseLogLines(strings.Split(str, "\n"))
+	steps := ParseStageSteps(&l.Stages[0])
+	spew.Dump(steps)
+
 }

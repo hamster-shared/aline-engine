@@ -304,6 +304,27 @@ func SaveJobLogString(name string, pipelineDetailId int, content string) error {
 	return saveStringToFile(logPath, content)
 }
 
+// GetJobStepLog 获取 job 的 step 日志
+func GetJobStepLog(name string, id int, stageName, stepName string) (*output.Step, error) {
+	logPath := getJobDetailLogPath(name, id)
+	fileLog, err := output.ParseLogFile(logPath)
+	if err != nil {
+		logger.Errorf("parse log file failed, %v", err)
+		return nil, err
+	}
+	for _, stage := range fileLog.Stages {
+		if stage.Name == stageName {
+			steps := output.ParseStageSteps(&stage)
+			for _, step := range steps {
+				if step.Name == stepName {
+					return step, nil
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
 // GetJobStageLog 获取 job 的 stage 日志
 func GetJobStageLog(name string, execId int, stageName string, start int) (*model.JobStageLog, error) {
 	logPath := getJobDetailLogPath(name, execId)

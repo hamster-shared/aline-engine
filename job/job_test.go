@@ -227,3 +227,9 @@ func TestGetJobCheckFilesData(t *testing.T) {
 		t.Logf(f.Path)
 	}
 }
+
+func TestGetJobStepLog(t *testing.T) {
+	step, err := GetJobStepLog("test", 10009, "第一阶段", "步骤 1")
+	assert.Nil(t, err)
+	spew.Dump(step)
+}

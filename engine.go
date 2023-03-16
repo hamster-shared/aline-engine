@@ -7,6 +7,7 @@ import (
 	jober "github.com/hamster-shared/aline-engine/job"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
+	"github.com/hamster-shared/aline-engine/output"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,8 +28,10 @@ type Engine interface {
 	RegisterStatusChangeHook(hook func(message model.StatusChangeMessage))
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
+	GetJobHistoryStepLog(name string, id int, stageName string, stepName string) (*output.Step, error)
 	TerminalJob(name string, id int) error
 	GetCurrentJobStatus(jobName string, jobID int) (model.Status, error)
+	IsValidWorker(w string) bool
 }
 
 type Role int
@@ -188,4 +191,16 @@ func (e *engine) GetCurrentJobStatus(jobName string, jobID int) (model.Status, e
 		return e.worker.GetJobStatus(jobName, jobID)
 	}
 	return e.master.getJobStatus(jobName, jobID)
+}
+
+// 校验是不是有效的 worker
+func (e *engine) IsValidWorker(w string) bool {
+	if e.role == RoleWorker {
+		return false
+	}
+	return e.master.isValidWorker(w)
+}
+
+func (e *engine) GetJobHistoryStepLog(name string, id int, stageName string, stepName string) (*output.Step, error) {
+	return jober.GetJobStepLog(name, id, stageName, stepName)
 }

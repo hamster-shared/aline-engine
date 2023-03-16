@@ -240,3 +240,7 @@ func convertJobStatus(status api.JobStatus) model.Status {
 		return model.STATUS_NOTRUN
 	}
 }
+
+func (e *masterEngine) isValidWorker(w string) bool {
+	return e.dispatch.IsValidNode(w)
+}
