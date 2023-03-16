@@ -394,7 +394,7 @@ func ParseStageSteps(stage *Stage) []*Step {
 	var stepNameList []string
 	var stepMap = make(map[string]*Step)
 	for _, s := range stage.Lines {
-		if strings.HasPrefix("[TimeConsuming]", s) {
+		if strings.HasPrefix(s, "[TimeConsuming]") {
 			continue
 		}
 		// 如果以 [Pipeline] Step: 开头，那么就是一个 step
