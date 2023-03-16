@@ -242,5 +242,5 @@ func convertJobStatus(status api.JobStatus) model.Status {
 }
 
 func (e *masterEngine) isValidWorker(w string) bool {
-	return e.dispatch.IsVaildNode(w)
+	return e.dispatch.IsValidNode(w)
 }

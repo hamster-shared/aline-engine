@@ -31,8 +31,8 @@ type IDispatcher interface {
 	// CancelJobWithNode 通过指定节点取消任务
 	CancelJobWithNode(name string, jobDetailID int, node *model.Node) *api.AlineMessage
 	GetJobStatus(name string, jobDetailID int) (*api.AlineMessage, error)
-	// IsVaildNode 判断有没有这个节点
-	IsVaildNode(n string) bool
+	// IsValidNode 判断有没有这个节点
+	IsValidNode(n string) bool
 }
 
 type GrpcDispatcher struct {
@@ -228,7 +228,7 @@ func (d *GrpcDispatcher) GetJobStatus(name string, id int) (*api.AlineMessage, e
 	}, nil
 }
 
-func (d *GrpcDispatcher) IsVaildNode(n string) bool {
+func (d *GrpcDispatcher) IsValidNode(n string) bool {
 	_, ok := d.nodes.Load(n)
 	return ok
 }
