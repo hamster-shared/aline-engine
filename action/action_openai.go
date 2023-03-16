@@ -90,7 +90,7 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 
 	var checkResult string
 	for _, f := range files {
-		askResult := askOpenAi(f)
+		askResult := a.askOpenAiChat(f)
 		checkResult += askResult
 	}
 
@@ -106,12 +106,12 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 		},
 	}
 
-	fmt.Println(checkResult)
+	a.output.WriteLine(checkResult)
 
 	return result, nil
 }
 
-func askOpenAi(file string) string {
+func (a *OpenaiAction) askOpenAi(file string) string {
 	content, err := os.ReadFile(file)
 
 	prompt := fmt.Sprintf("%s\n### Security risk with above code", content)
@@ -167,7 +167,7 @@ func askOpenAi(file string) string {
 	return ""
 }
 
-func askOpenAiChat(file string) string {
+func (a *OpenaiAction) askOpenAiChat(file string) string {
 	content, err := os.ReadFile(file)
 
 	prompt := fmt.Sprintf("%s\n### Security risk with above code", content)
@@ -198,8 +198,13 @@ func askOpenAiChat(file string) string {
 	resp, err = http.DefaultClient.Do(request)
 	b, err := io.ReadAll(resp.Body)
 
-	logger.Info("openai response code: ", resp.StatusCode)
+	logger.Info("openai response code:", resp.StatusCode)
 	logger.Info("openai response content: ", string(b))
+
+	if a.output != nil {
+		a.output.WriteLine(fmt.Sprintf("openai response code: %d", resp.StatusCode))
+		a.output.WriteLine(fmt.Sprintf("openai response content:  %s", string(b)))
+	}
 
 	if err != nil {
 		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
