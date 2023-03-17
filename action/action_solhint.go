@@ -56,7 +56,7 @@ func (a *SolHintAction) Pre() error {
 
 func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("sol-profiler-check")
+	// a.output.NewStep("sol-profiler-check")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 

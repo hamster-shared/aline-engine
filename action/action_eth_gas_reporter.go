@@ -41,7 +41,7 @@ func (a *EthGasReporterAction) Pre() error {
 
 func (a *EthGasReporterAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("eth-gas-reporter")
+	// a.output.NewStep("eth-gas-reporter")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 

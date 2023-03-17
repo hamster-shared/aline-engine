@@ -35,7 +35,7 @@ func (a *CheckAggregationAction) Pre() error {
 }
 
 func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
-	a.output.NewStep("check-aggregation")
+	// a.output.NewStep("check-aggregation")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 	jobName, ok := stack["name"].(string)

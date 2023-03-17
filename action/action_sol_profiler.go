@@ -42,7 +42,7 @@ func (a *SolProfilerAction) Pre() error {
 
 func (a *SolProfilerAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("sol-profiler-check")
+	// a.output.NewStep("sol-profiler-check")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 

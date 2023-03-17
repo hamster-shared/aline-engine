@@ -218,6 +218,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			} else if strings.Contains(step.Uses, "/") {
 				ah = action.NewRemoteAction(step, ctx)
 			}
+			jobWrapper.Output.NewStep(step.Name)
 			err = executeAction(ah, jobWrapper)
 			dataTime := time.Since(stageWapper.Stage.Steps[index].StartTime)
 			stageWapper.Stage.Steps[index].Duration = dataTime.Milliseconds()

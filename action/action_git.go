@@ -36,7 +36,7 @@ func NewGitAction(step model2.Step, ctx context.Context, output *output.Output) 
 }
 
 func (a *GitAction) Pre() error {
-	a.output.NewStep("git")
+	// a.output.NewStep("git")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 	a.workdir = stack["workdir"].(string)

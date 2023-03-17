@@ -36,7 +36,7 @@ func (a *SlitherAction) Pre() error {
 
 func (a *SlitherAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("slither-check")
+	// a.output.NewStep("slither-check")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 

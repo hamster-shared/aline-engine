@@ -88,7 +88,7 @@ func (a *MythRilAction) Pre() error {
 
 func (a *MythRilAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("mythril-check")
+	// a.output.NewStep("mythril-check")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 

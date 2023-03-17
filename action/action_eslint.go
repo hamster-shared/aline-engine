@@ -78,7 +78,7 @@ func (a *EslintAction) Pre() error {
 
 func (a *EslintAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("eslint-check")
+	// a.output.NewStep("eslint-check")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 
