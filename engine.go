@@ -8,6 +8,7 @@ import (
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,6 +33,7 @@ type Engine interface {
 	TerminalJob(name string, id int) error
 	GetCurrentJobStatus(jobName string, jobID int) (model.Status, error)
 	IsValidWorker(w string) bool
+	GetWorkRootPath() string
 }
 
 type Role int
@@ -203,4 +205,8 @@ func (e *engine) IsValidWorker(w string) bool {
 
 func (e *engine) GetJobHistoryStepLog(name string, id int, stageName string, stepName string) (*output.Step, error) {
 	return jober.GetJobStepLog(name, id, stageName, stepName)
+}
+
+func (e *engine) GetWorkRootPath() string {
+	return utils.DefaultConfigDir()
 }
