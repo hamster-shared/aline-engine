@@ -44,8 +44,9 @@ type Stage struct {
 }
 
 type Step struct {
-	Name  string
-	Lines []string
+	Name    string `json:"name"`
+	lines   []string
+	Content string `json:"content"`
 }
 
 type TimeConsuming struct {
@@ -62,7 +63,7 @@ func New(name string, id int) *Output {
 		ID:     id,
 		buffer: make([]string, 0, 16),
 		timeConsuming: TimeConsuming{
-			StartTime: time.Now().Local(),
+			StartTime: time.Now().UTC(),
 		},
 		stageTimeConsuming: make(map[string]TimeConsuming),
 		// stepTimeConsuming:  make(map[string]TimeConsuming),
@@ -112,7 +113,7 @@ func (o *Output) StageDuration(name string) time.Duration {
 // Done 标记输出已完成，会将缓存中的内容刷入文件，然后关闭文件
 func (o *Output) Done() {
 	logger.Trace("output done, flush all, close file")
-	now := time.Now().Local()
+	now := time.Now().UTC()
 
 	// 将之前的 Stage 标记为完成
 	for k, v := range o.stageTimeConsuming {
@@ -137,7 +138,7 @@ func (o *Output) Done() {
 
 // WriteLine 将一行普通内容写入输出
 func (o *Output) WriteLine(line string) {
-	timeFormat := fmt.Sprintf("[%s] ", time.Now().Local().Format("2006-01-02 15:04:05"))
+	timeFormat := fmt.Sprintf("[%s] ", time.Now().UTC().Format("2006-01-02 15:04:05"))
 	// 如果不是以换行符结尾，自动添加
 	if !strings.HasSuffix(line, "\n") {
 		line += "\n"
@@ -180,7 +181,7 @@ func (o *Output) NewStage(name string) {
 	// 将之前的 Stage 标记为完成
 	for k, v := range o.stageTimeConsuming {
 		if !v.Done {
-			v.EndTime = time.Now().Local()
+			v.EndTime = time.Now().UTC()
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stageTimeConsuming[k] = v
@@ -193,7 +194,7 @@ func (o *Output) NewStage(name string) {
 	o.WriteLineWithNoTime("[Pipeline] Stage: " + name)
 	// o.WriteLineWithNoTime("{ ")
 
-	startTime := time.Now().Local()
+	startTime := time.Now().UTC()
 	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
 	o.stageTimeConsuming[name] = TimeConsuming{
 		StartTime: startTime,
@@ -409,7 +410,7 @@ func ParseStageSteps(stage *Stage) []*Step {
 		}
 		stepName := stepNameList[len(stepNameList)-1]
 		step := stepMap[stepName]
-		step.Lines = append(step.Lines, s)
+		step.lines = append(step.lines, s)
 	}
 	var result []*Step
 	for i := range stepNameList {
