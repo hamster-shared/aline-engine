@@ -49,6 +49,10 @@ type Step struct {
 	Content string `json:"content"`
 }
 
+func (s *Step) fillContent() {
+	s.Content = strings.Join(s.lines, "\n")
+}
+
 type TimeConsuming struct {
 	Done      bool
 	StartTime time.Time
@@ -416,6 +420,7 @@ func ParseStageSteps(stage *Stage) []*Step {
 	for i := range stepNameList {
 		for k, v := range stepMap {
 			if k == stepNameList[i] {
+				v.fillContent()
 				result = append(result, v)
 			}
 		}
