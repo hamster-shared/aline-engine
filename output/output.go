@@ -81,7 +81,7 @@ func New(name string, id int) *Output {
 
 	o.timedWriteFile()
 
-	o.WriteLineWithNoTime("[Job] Started on " + o.timeConsuming.StartTime.Format("2006-01-02 15:04:05"))
+	o.WriteLineWithNoTime("[Job] Started on " + o.timeConsuming.StartTime.Format(time.RFC3339))
 
 	return o
 }
@@ -126,7 +126,7 @@ func (o *Output) Done() {
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stageTimeConsuming[k] = v
-			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
+			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format(time.RFC3339), v.Duration))
 		}
 	}
 
@@ -135,14 +135,14 @@ func (o *Output) Done() {
 	o.timeConsuming.EndTime = now
 	o.timeConsuming.Duration = now.Sub(o.timeConsuming.StartTime)
 	o.flush(o.buffer[o.fileCursor:])
-	o.flush([]string{fmt.Sprintf("\n[Job] Finished on %s, Duration: %s\n\n", now.Format("2006-01-02 15:04:05"), o.timeConsuming.Duration)})
+	o.flush([]string{fmt.Sprintf("\n[Job] Finished on %s, Duration: %s\n\n", now.Format(time.RFC3339), o.timeConsuming.Duration)})
 	o.f.Close()
 	o.mu.Unlock()
 }
 
 // WriteLine 将一行普通内容写入输出
 func (o *Output) WriteLine(line string) {
-	timeFormat := fmt.Sprintf("[%s] ", time.Now().UTC().Format("2006-01-02 15:04:05"))
+	timeFormat := fmt.Sprintf("[%s] ", time.Now().UTC().Format(time.RFC3339))
 	// 如果不是以换行符结尾，自动添加
 	if !strings.HasSuffix(line, "\n") {
 		line += "\n"
@@ -189,7 +189,7 @@ func (o *Output) NewStage(name string) {
 			v.Duration = v.EndTime.Sub(v.StartTime)
 			v.Done = true
 			o.stageTimeConsuming[k] = v
-			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format("2006-01-02 15:04:05"), v.Duration))
+			o.WriteLineWithNoTime(fmt.Sprintf("[TimeConsuming] EndTime: %s, Duration: %s", v.EndTime.Format(time.RFC3339), v.Duration))
 			// o.WriteLineWithNoTime("} ")
 		}
 	}
@@ -199,7 +199,7 @@ func (o *Output) NewStage(name string) {
 	// o.WriteLineWithNoTime("{ ")
 
 	startTime := time.Now().UTC()
-	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format("2006-01-02 15:04:05"))
+	o.WriteLineWithNoTime("[TimeConsuming] StartTime: " + startTime.Format(time.RFC3339))
 	o.stageTimeConsuming[name] = TimeConsuming{
 		StartTime: startTime,
 	}
@@ -331,13 +331,13 @@ func parseLogLines(lines []string) Log {
 		if strings.HasPrefix(line, "[Job]") || line == "\n" || line == "" {
 			if strings.HasPrefix(line, "[Job] Started on ") {
 				startTime := strings.TrimPrefix(line, "[Job] Started on ")
-				log.StartTime, _ = time.Parse("2006-01-02 15:04:05", startTime)
+				log.StartTime, _ = time.Parse(time.RFC3339, startTime)
 			}
 			if strings.HasPrefix(line, "[Job] Finished on ") {
 				endTimeAndDuration := strings.TrimPrefix(line, "[Job] Finished on ")
 				endTimeAndDurationSlice := strings.Split(endTimeAndDuration, ",")
 				endTime := endTimeAndDurationSlice[0]
-				log.EndTime, _ = time.Parse("2006-01-02 15:04:05", endTime)
+				log.EndTime, _ = time.Parse(time.RFC3339, endTime)
 
 				if len(endTimeAndDurationSlice) > 1 {
 					duration := endTimeAndDurationSlice[1]
@@ -364,12 +364,12 @@ func parseLogLines(lines []string) Log {
 				for _, line := range v {
 					if strings.HasPrefix(line, "[TimeConsuming] StartTime: ") {
 						startTimeString := strings.TrimPrefix(line, "[TimeConsuming] StartTime: ")
-						startTime, _ = time.Parse("2006-01-02 15:04:05", startTimeString)
+						startTime, _ = time.Parse(time.RFC3339, startTimeString)
 					}
 					if strings.HasPrefix(line, "[TimeConsuming] EndTime: ") {
 						endTimeString := strings.TrimPrefix(line, "[TimeConsuming] EndTime: ")
 						endTimeAndDurationSlice := strings.Split(endTimeString, ",")
-						endTime, _ = time.Parse("2006-01-02 15:04:05", endTimeAndDurationSlice[0])
+						endTime, _ = time.Parse(time.RFC3339, endTimeAndDurationSlice[0])
 
 						if len(endTimeAndDurationSlice) > 1 {
 							durationString := endTimeAndDurationSlice[1]
