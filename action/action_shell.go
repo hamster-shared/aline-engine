@@ -60,6 +60,13 @@ func (a *ShellAction) Pre() error {
 		logger.Errorf("write tmp file error: %v", err)
 	} else {
 		logger.Debugf("write tmp file success: %v", a.filename)
+		// 读取这个文件看看
+		content, err := os.ReadFile(a.filename)
+		if err != nil {
+			logger.Errorf("read tmp file error: %v", err)
+			return err
+		}
+		logger.Debugf("read tmp file success: %v", string(content))
 	}
 
 	return err
