@@ -56,6 +56,11 @@ func (a *ShellAction) Pre() error {
 
 	content := []byte("#!/bin/sh\nset -ex\n" + command)
 	err := os.WriteFile(a.filename, content, os.ModePerm)
+	if err != nil {
+		logger.Errorf("write tmp file error: %v", err)
+	} else {
+		logger.Debugf("write tmp file success: %v", a.filename)
+	}
 
 	return err
 }
