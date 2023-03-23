@@ -108,6 +108,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			switch rErr.(type) {
 			case runtime.Error: // 运行时错误
 				fmt.Println("runtime error:", rErr)
+				logger.Errorf("runtime error: %s", rErr)
 				err = fmt.Errorf("runtime error: %s", rErr)
 			default: // 非运行时错误
 				// do nothing
@@ -117,14 +118,17 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			return nil
 		}
 		if ah == nil {
+			logger.Errorf("action handler is nil, job name: %s, job id: %d", job.Name, job.Id)
 			return nil
 		}
 		err = ah.Pre()
 		if err != nil {
 			job.Status = model.STATUS_FAIL
+			logger.Errorf("action pre hook error, job name: %s, job id: %d, error: %s", job.Name, job.Id, err.Error())
 			fmt.Println(err)
 			return err
 		}
+		logger.Infof("action pre hook success, job name: %s, job id: %d", job.Name, job.Id)
 		stack.Push(ah)
 		actionResult, err := ah.Hook()
 		if actionResult != nil && len(actionResult.Artifactorys) > 0 {
