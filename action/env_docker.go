@@ -111,17 +111,17 @@ func (e *DockerEnv) Post() error {
 		return err
 	}
 
-	// c = exec.Command("docker", "rm", "-f", e.containerID)
-	// logger.Debugf("execute docker command: %s", strings.Join(c.Args, " "))
-	// e.output.WriteCommandLine(strings.Join(c.Args, " "))
+	c = exec.Command("docker", "rm", "-f", e.containerID)
+	logger.Debugf("execute docker command: %s", strings.Join(c.Args, " "))
+	e.output.WriteCommandLine(strings.Join(c.Args, " "))
 
-	// output, err = c.CombinedOutput()
-	// e.output.WriteLine(string(output))
+	output, err = c.CombinedOutput()
+	e.output.WriteLine(string(output))
 
-	// if err != nil {
-	// 	logger.Errorf("execute docker command error: %s", err.Error())
-	// 	return err
-	// }
+	if err != nil {
+		logger.Errorf("execute docker command error: %s", err.Error())
+		return err
+	}
 
 	stack := e.ctx.Value(STACK).(map[string]interface{})
 	stack["withEnv"] = []string{}
