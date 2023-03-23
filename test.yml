@@ -4,5 +4,7 @@ stages:
   say-hello:
     steps:
       - name: say-hello
+        volumes:
+          - ~/.move:~/.move
         run: |
           echo "Hello World!"
