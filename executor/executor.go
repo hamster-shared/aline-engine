@@ -278,15 +278,9 @@ func (e *Executor) Cancel(jobName string, id int) error {
 		cancel()
 		// 删除
 		delete(e.cancelMap, strings.Join([]string{jobName, strconv.Itoa(id)}, "/"))
-		// job detail status change to fail
-		err := jober.MakeJobFail(jobName, id, "job canceled")
-		if err != nil {
-			logger.Errorf("make job fail error: %s", err.Error())
-		}
 	} else {
-		logger.Warnf("job cancel function not found: %s/%d", jobName, id)
+		logger.Errorf("job cancel function not found: %s/%d", jobName, id)
 	}
-	time.Sleep(600 * time.Millisecond) // 等待 0.6 秒，让 job detail 状态更新，并传回 master
 	e.StatusChan <- model.NewStatusChangeMsg(jobName, id, model.STATUS_STOP)
 	return nil
 }

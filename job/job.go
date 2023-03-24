@@ -511,13 +511,13 @@ func WriteFileToJobsDir(fileName string, content []byte) error {
 	return SaveFile(filepath.Join(jobsDir, fileName), content)
 }
 
-// MakeJobFail 使 job 失败
-func MakeJobFail(jobName string, jobDetailId int, errorString string) error {
+// MakeJobStop 使 job 停止
+func MakeJobStop(jobName string, jobDetailId int, errorString string) error {
 	jobDetail, err := GetJobDetail(jobName, jobDetailId)
 	if err != nil {
 		return err
 	}
-	jobDetail.Status = model.STATUS_FAIL
+	jobDetail.Status = model.STATUS_STOP
 	jobDetail.Error = errorString
 	return SaveJobDetail(jobName, jobDetail)
 }
