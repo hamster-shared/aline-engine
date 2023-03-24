@@ -105,7 +105,7 @@ func TestEngineWork(t *testing.T) {
 	assert.NilError(t, err)
 	createJob(e)
 	go func() {
-		_, err = e.ExecuteJob("hello1")
+		_, err = e.ExecuteJob("hello1", 3)
 		if err != nil {
 			t.Errorf("execute job error: %v", err)
 		}
@@ -120,7 +120,7 @@ func TestEngineStepTimeoutCancel(t *testing.T) {
 	assert.NilError(t, err)
 	createJob(e)
 	go func() {
-		_, err = e.ExecuteJob("hello1")
+		_, err = e.ExecuteJob("hello1", 2)
 		if err != nil {
 			t.Errorf("execute job error: %v", err)
 		}
@@ -154,7 +154,7 @@ func TestEngineGetJobStatus(t *testing.T) {
 	createJob(e)
 	var jobDetail *model.JobDetail
 	go func() {
-		jobDetail, err = e.ExecuteJob("hello1")
+		jobDetail, err = e.ExecuteJob("hello1", 1)
 		if err != nil {
 			t.Errorf("execute job error: %v", err)
 		}

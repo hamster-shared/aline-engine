@@ -20,12 +20,12 @@ type Engine interface {
 	GetJob(name string) (*model.Job, error)
 	GetJobs(keyword string, page, size int) (*model.JobPage, error)
 	GetCodeInfo(name string, historyId int) (string, error)
-	ExecuteJob(name string) (*model.JobDetail, error)
+	ExecuteJob(name string, id int) (*model.JobDetail, error)
 	ReExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
 	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
 	DeleteJobHistory(name string, id int) error
-	CreateJobDetail(name string) (*model.JobDetail, error)
+	CreateJobDetail(name string, id int) (*model.JobDetail, error)
 	ExecuteJobDetail(name string, id int) error
 	RegisterStatusChangeHook(hook func(message model.StatusChangeMessage))
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
@@ -112,11 +112,11 @@ func (e *engine) GetCodeInfo(name string, historyId int) (string, error) {
 	return jobDetail.CodeInfo, nil
 }
 
-func (e *engine) ExecuteJob(name string) (*model.JobDetail, error) {
+func (e *engine) ExecuteJob(name string, id int) (*model.JobDetail, error) {
 	if e.role != RoleMaster {
 		return nil, fmt.Errorf("only master can execute job")
 	}
-	jobDetail, err := e.CreateJobDetail(name)
+	jobDetail, err := e.CreateJobDetail(name, id)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +152,8 @@ func (e *engine) DeleteJobHistory(name string, id int) error {
 	return jober.DeleteJobDetail(name, id)
 }
 
-func (e *engine) CreateJobDetail(name string) (*model.JobDetail, error) {
-	return jober.CreateJobDetail(name)
+func (e *engine) CreateJobDetail(name string, id int) (*model.JobDetail, error) {
+	return jober.CreateJobDetail(name, id)
 }
 
 func (e *engine) RegisterStatusChangeHook(hook func(message model.StatusChangeMessage)) {

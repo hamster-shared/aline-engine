@@ -164,7 +164,7 @@ func Test_JobDetailList(t *testing.T) {
 
 func Test_CreateJobDetail(t *testing.T) {
 	logger.Init().ToStdoutAndFile().SetLevel(logrus.TraceLevel)
-	detail, err := CreateJobDetail("hello-world")
+	detail, err := CreateJobDetail("hello-world", 100)
 	assert.Nil(t, err)
 	t.Log(spew.Sdump(detail))
 }
