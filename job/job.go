@@ -510,3 +510,14 @@ func WriteFileToJobsDir(fileName string, content []byte) error {
 	jobsDir := GetJobsDir()
 	return SaveFile(filepath.Join(jobsDir, fileName), content)
 }
+
+// MakeJobFail 使 job 失败
+func MakeJobFail(jobName string, jobDetailId int, errorString string) error {
+	jobDetail, err := GetJobDetail(jobName, jobDetailId)
+	if err != nil {
+		return err
+	}
+	jobDetail.Status = model.STATUS_FAIL
+	jobDetail.Error = errorString
+	return SaveJobDetail(jobName, jobDetail)
+}
