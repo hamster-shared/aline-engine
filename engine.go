@@ -26,6 +26,7 @@ type Engine interface {
 	GetJobHistorys(name string, page, size int) (*model.JobDetailPage, error)
 	DeleteJobHistory(name string, id int) error
 	CreateJobDetail(name string) (*model.JobDetail, error)
+	ExecuteJobDetail(name string, id int) error
 	RegisterStatusChangeHook(hook func(message model.StatusChangeMessage))
 	GetJobHistoryLog(name string, id int) (*model.JobLog, error)
 	GetJobHistoryStageLog(name string, id int, stageName string, start int) (*model.JobStageLog, error)
@@ -120,6 +121,13 @@ func (e *engine) ExecuteJob(name string) (*model.JobDetail, error) {
 		return nil, err
 	}
 	return jobDetail, e.master.dispatchJob(name, jobDetail.Id)
+}
+
+func (e *engine) ExecuteJobDetail(name string, id int) error {
+	if e.role != RoleMaster {
+		return fmt.Errorf("only master can execute job detail")
+	}
+	return e.master.dispatchJob(name, id)
 }
 
 func (e *engine) ReExecuteJob(name string, id int) error {
