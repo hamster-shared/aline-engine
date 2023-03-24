@@ -75,6 +75,8 @@ func (c *ExecutorClient) handleJobQueue() {
 			err := c.executor.Execute(jobId, job)
 			if err != nil {
 				logger.Errorf("execute job error: %v", err)
+				// 在这里再次同步一次状态
+				c.executor.StatusChan <- model.NewStatusChangeMsg(jobName, jobId, model.STATUS_FAIL)
 			}
 		}()
 	}
