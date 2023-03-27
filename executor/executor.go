@@ -155,23 +155,26 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
 
-	var jobDone = make(chan bool)
-	defer func() { jobDone <- true }()
+	var jobDone = make(chan struct{})
+	defer close(jobDone)
+
 	// 定时保存运行状态到 job detail，以更新 step 的运行时间
 	go func(jobW *model.JobDetail) {
 		for {
-			for i := range jobW.Stages {
-				for j := range jobW.Stages[i].Stage.Steps {
-					if jobW.Stages[i].Stage.Steps[j].Status == model.STATUS_RUNNING {
-						jobW.Stages[i].Stage.Steps[j].Duration = int64(time.Since(jobW.Stages[i].Stage.Steps[j].StartTime).Milliseconds())
-						logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
+			select {
+			case <-jobDone:
+				return
+			default:
+				for i := range jobW.Stages {
+					for j := range jobW.Stages[i].Stage.Steps {
+						if jobW.Stages[i].Stage.Steps[j].Status == model.STATUS_RUNNING {
+							jobW.Stages[i].Stage.Steps[j].Duration = int64(time.Since(jobW.Stages[i].Stage.Steps[j].StartTime).Milliseconds())
+							logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
+						}
 					}
 				}
-			}
-			jober.SaveJobDetail(jobW.Name, jobW)
-			time.Sleep(time.Second * 2)
-			if <-jobDone {
-				break
+				jober.SaveJobDetail(jobW.Name, jobW)
+				time.Sleep(time.Second * 2)
 			}
 		}
 	}(jobWrapper)
