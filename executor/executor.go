@@ -166,6 +166,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 		for index, step := range stageWapper.Stage.Steps {
+			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			var ah action.ActionHandler
 			if step.RunsOn != "" {
 				ah = action.NewDockerEnv(step, ctx, jobWrapper.Output)
@@ -231,6 +233,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				break
 			}
 			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 		}
 
 		for !stack.IsEmpty() {
@@ -252,7 +255,6 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			cancel()
 			break
 		}
-
 	}
 	jobWrapper.Output.Done()
 
@@ -293,6 +295,7 @@ func (e *Executor) GetJobStatus(jobName string, jobID int) (model.Status, error)
 	return model.STATUS_NOTRUN, fmt.Errorf("job not found")
 }
 
+// 定时监听，以在任务超时时将其取消
 func (e *Executor) handleTimerListener() {
 	for {
 		e.stepTimerMap.Range(func(key, value any) bool {
@@ -325,6 +328,7 @@ func newStepTimer() *stepTimer {
 	}
 }
 
+// 如果单个步骤超时了，就取消，超时时间暂定为 30 分钟
 func (t *stepTimer) isTimeout() bool {
 	return time.Since(t.startTime) > time.Minute*consts.STEP_TIMEOUT_MINUTE
 }
