@@ -169,7 +169,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 					for j := range jobW.Stages[i].Stage.Steps {
 						if jobW.Stages[i].Stage.Steps[j].Status == model.STATUS_RUNNING {
 							jobW.Stages[i].Stage.Steps[j].Duration = int64(time.Since(jobW.Stages[i].Stage.Steps[j].StartTime).Milliseconds())
-							logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
+							// logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
 						}
 					}
 				}
