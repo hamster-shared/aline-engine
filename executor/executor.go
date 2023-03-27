@@ -155,18 +155,18 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
 
-	var jobDone = make(chan bool)
-	defer func() { jobDone <- true }()
-	// 定时保存运行状态到 job detail，以更新 step 的运行时间
-	go func() {
-		for {
-			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
-			time.Sleep(time.Second * 2)
-			if <-jobDone {
-				break
-			}
-		}
-	}()
+	// var jobDone = make(chan bool)
+	// defer func() { jobDone <- true }()
+	// // 定时保存运行状态到 job detail，以更新 step 的运行时间
+	// go func(jobW *model.JobDetail) {
+	// 	for {
+	// 		jober.SaveJobDetail(jobW.Name, jobW)
+	// 		time.Sleep(time.Second * 2)
+	// 		if <-jobDone {
+	// 			break
+	// 		}
+	// 	}
+	// }(jobWrapper)
 
 	for index, stageWapper := range jobWrapper.Stages {
 		//TODO ... stage 的输出也需要换成堆栈方式
@@ -179,8 +179,6 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 		for index, step := range stageWapper.Stage.Steps {
-			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
-			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			var ah action.ActionHandler
 			if step.RunsOn != "" {
 				ah = action.NewDockerEnv(step, ctx, jobWrapper.Output)
@@ -191,6 +189,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
 			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
 			e.stepTimerMap.Store(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id), newStepTimer())
