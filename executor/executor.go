@@ -155,6 +155,19 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
 
+	var jobDone = make(chan bool)
+	defer func() { jobDone <- true }()
+	// 定时保存运行状态到 job detail，以更新 step 的运行时间
+	go func() {
+		for {
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			time.Sleep(time.Second * 2)
+			if <-jobDone {
+				break
+			}
+		}
+	}()
+
 	for index, stageWapper := range jobWrapper.Stages {
 		//TODO ... stage 的输出也需要换成堆栈方式
 		logger.Info("stage: {")
