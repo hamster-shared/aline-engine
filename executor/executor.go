@@ -155,6 +155,30 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
 
+	var jobDone = make(chan struct{})
+	defer close(jobDone)
+
+	// 定时保存运行状态到 job detail，以更新 step 的运行时间
+	go func(jobW *model.JobDetail) {
+		for {
+			select {
+			case <-jobDone:
+				return
+			default:
+				for i := range jobW.Stages {
+					for j := range jobW.Stages[i].Stage.Steps {
+						if jobW.Stages[i].Stage.Steps[j].Status == model.STATUS_RUNNING {
+							jobW.Stages[i].Stage.Steps[j].Duration = int64(time.Since(jobW.Stages[i].Stage.Steps[j].StartTime).Milliseconds())
+							// logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
+						}
+					}
+				}
+				jober.SaveJobDetail(jobW.Name, jobW)
+				time.Sleep(time.Second * 2)
+			}
+		}
+	}(jobWrapper)
+
 	for index, stageWapper := range jobWrapper.Stages {
 		//TODO ... stage 的输出也需要换成堆栈方式
 		logger.Info("stage: {")
@@ -176,6 +200,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
 			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
 			e.stepTimerMap.Store(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id), newStepTimer())
@@ -233,6 +258,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				break
 			}
 			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
+			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 		}
 
 		for !stack.IsEmpty() {
@@ -254,7 +280,6 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			cancel()
 			break
 		}
-
 	}
 	jobWrapper.Output.Done()
 
@@ -295,6 +320,7 @@ func (e *Executor) GetJobStatus(jobName string, jobID int) (model.Status, error)
 	return model.STATUS_NOTRUN, fmt.Errorf("job not found")
 }
 
+// 定时监听，以在任务超时时将其取消
 func (e *Executor) handleTimerListener() {
 	for {
 		e.stepTimerMap.Range(func(key, value any) bool {
@@ -327,6 +353,7 @@ func newStepTimer() *stepTimer {
 	}
 }
 
+// 如果单个步骤超时了，就取消，超时时间暂定为 30 分钟
 func (t *stepTimer) isTimeout() bool {
 	return time.Since(t.startTime) > time.Minute*consts.STEP_TIMEOUT_MINUTE
 }
