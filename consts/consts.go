@@ -54,6 +54,10 @@ const (
 	GasReporterTotalDir       = "gas-reporter"
 	EthGasReporterDir         = "eth-gas-reporter"
 	EthGasReporterTruffle     = "truffle test"
+	MoveFileSuffix            = ".move"
+	MoveProve                 = "Move Prove"
+	MoveProveCheckOutputDir   = "move-prover"
+	MoveProveCheck            = "docker run --rm -v %s:/tmp hamstershare/aptoslabs-tools:aptos-node-v1.3.0 aptos move prove --package-dir %s"
 )
 
 var InkUrlMap = map[string]string{

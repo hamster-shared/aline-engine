@@ -105,7 +105,7 @@ func TestEngineWork(t *testing.T) {
 	assert.NilError(t, err)
 	createJob(e)
 	go func() {
-		_, err = e.ExecuteJob("hello1", 3)
+		_, err = e.ExecuteJob("aptos-check", 10)
 		if err != nil {
 			t.Errorf("execute job error: %v", err)
 		}
@@ -137,11 +137,11 @@ func TestWorkerEngineWork(t *testing.T) {
 }
 
 func createJob(e Engine) {
-	data, err := os.ReadFile("test.yml")
+	data, err := os.ReadFile("aptos-check.yml")
 	if err != nil {
 		panic(err)
 	}
-	err = e.CreateJob("hello1", string(data))
+	err = e.CreateJob("aptos-check", string(data))
 	if err != nil {
 		panic(err)
 	}

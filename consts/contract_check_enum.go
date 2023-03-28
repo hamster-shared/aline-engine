@@ -14,11 +14,12 @@ func contractCheckResult(name string, tool string) ContractCheckEnum {
 }
 
 var (
-	ContractMethodsPropertiesReport     = contractCheckResult("Contract Methods Properties Report", "sol-profiler")
-	ContractStyleGuideValidationsReport = contractCheckResult("Contract Style Guide validations Report", "Solhint")
-	ContractSecurityAnalysisReport      = contractCheckResult("Contract Security Analysis Report", "mythril")
-	FrontEndCheckReport                 = contractCheckResult("Static analysis report", "ESLint")
-	EthGasCheckReport                   = contractCheckResult("Gas Usage Report", "eth-gas-reporter")
+	ContractMethodsPropertiesReport          = contractCheckResult("Contract Methods Properties Report", "sol-profiler")
+	ContractStyleGuideValidationsReport      = contractCheckResult("Contract Style Guide validations Report", "Solhint")
+	ContractSecurityAnalysisReport           = contractCheckResult("Contract Security Analysis Report", "mythril")
+	FrontEndCheckReport                      = contractCheckResult("Static analysis report", "ESLint")
+	EthGasCheckReport                        = contractCheckResult("Gas Usage Report", "eth-gas-reporter")
+	FormalSpecificationAndVerificationReport = contractCheckResult("Formal Specification and Verification Report", "Move Prove")
 )
 
 var (
