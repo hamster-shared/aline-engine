@@ -57,7 +57,7 @@ const (
 	MoveFileSuffix            = ".move"
 	MoveProve                 = "Move Prove"
 	MoveProveCheckOutputDir   = "move-prover"
-	MoveProveCheck            = "docker run --rm -v %s:/tmp hamstershare/aptoslabs-tools:aptos-node-v1.3.0 aptos move prove --package-dir %s"
+	MoveProveCheck            = "docker run --rm %s -v %s:/tmp hamstershare/aptoslabs-tools:aptos-node-v1.3.3 aptos move prove --package-dir %s %s"
 )
 
 var InkUrlMap = map[string]string{

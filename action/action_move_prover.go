@@ -23,16 +23,18 @@ import (
 
 // MoveProverAction MoveProver 合约检查
 type MoveProverAction struct {
-	path   string
-	ctx    context.Context
-	output *output.Output
+	path      string
+	cachePath string
+	ctx       context.Context
+	output    *output.Output
 }
 
 func NewMoveProverAction(step model.Step, ctx context.Context, output *output.Output) *MoveProverAction {
 	return &MoveProverAction{
-		path:   step.With["path"],
-		ctx:    ctx,
-		output: output,
+		path:      step.With["path"],
+		cachePath: step.With["cachePath"],
+		ctx:       ctx,
+		output:    output,
 	}
 }
 
@@ -85,21 +87,29 @@ func (a *MoveProverAction) Hook() (*model.ActionResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		command := fmt.Sprintf(commandTemplate, workdir, path2.Join("/tmp", redundantPath))
+		var cachePathCommand string
+		if a.cachePath != "" {
+			cachePathCommand = "-v " + a.cachePath
+		}
+		var command string
 		if namedAddress != "" {
-			command = command + " --named-addresses " + namedAddress
+			command = fmt.Sprintf(commandTemplate, cachePathCommand, workdir, path2.Join("/tmp", redundantPath), " --named-addresses "+namedAddress)
+		} else {
+			command = fmt.Sprintf(commandTemplate, cachePathCommand, workdir, path2.Join("/tmp", redundantPath), "")
 		}
 		fields := strings.Fields(command)
 		out, err := a.ExecuteCommand(fields, workdir)
 		if out == "" && err != nil {
 			return nil, err
 		}
-		compile, err := regexp.Compile(`\[.{1,2}m`)
+		compile, err := regexp.Compile(`\[.{1,6}m`)
 		if err != nil {
 			logger.Errorf("regexp err %s", err)
 			return nil, err
 		}
 		replaceAfterString := compile.ReplaceAllString(out, "")
+		replaceAfterString = strings.ReplaceAll(replaceAfterString, "\u001B", "")
+		//replaceAfterString = strings.ReplaceAll(replaceAfterString, "[38;5;11m", "")
 		create, err := os.Create(dest)
 		if err != nil {
 			return nil, err
@@ -182,7 +192,6 @@ func (a *MoveProverAction) Post() error {
 					if len(fileSplit) < 3 {
 						continue
 					}
-					styleGuideValidationsReportDetails.OriginalText = fileSplit[0]
 					styleGuideValidationsReportDetails.Line = fileSplit[1]
 					styleGuideValidationsReportDetails.Column = fileSplit[2]
 				}

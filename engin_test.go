@@ -105,7 +105,7 @@ func TestEngineWork(t *testing.T) {
 	assert.NilError(t, err)
 	createJob(e)
 	go func() {
-		_, err = e.ExecuteJob("aptos-check", 10)
+		_, err = e.ExecuteJob("aptos-check", 22)
 		if err != nil {
 			t.Errorf("execute job error: %v", err)
 		}

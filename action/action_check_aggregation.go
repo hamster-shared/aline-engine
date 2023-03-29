@@ -121,7 +121,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			styleGuideValidationsReportRaw.Context = contractCheckResultDetailsList
 			checkResultList = append(checkResultList, styleGuideValidationsReportRaw)
 		}
-		if strings.Contains(result, consts.ContractSecurityAnalysisReport.Name) {
+		if strings.Contains(result, consts.ContractSecurityAnalysisReport.Name) || strings.Contains(result, consts.FormalSpecificationAndVerificationReport.Name) {
 			var securityAnalysisReport model.ContractCheckResult[[]model.ContractStyleGuideValidationsReportDetails]
 			err := json.Unmarshal(file, &securityAnalysisReport)
 			if err != nil {

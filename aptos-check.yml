@@ -20,6 +20,7 @@ stages:
         uses: aptos-check
         with:
           path:
+          cachePath: /Users/abing/.move:/root/.move
 
   Output Results:
     needs:
