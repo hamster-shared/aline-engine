@@ -196,8 +196,14 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
 	var resp *http.Response
 	resp, err = http.DefaultClient.Do(request)
-	b, err := io.ReadAll(resp.Body)
 
+	if err != nil {
+		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
+		a.output.WriteLine(fmt.Sprintf("http.Do failed,[err=%s][url=%s]\n", err, url))
+		return ""
+	}
+
+	b, err := io.ReadAll(resp.Body)
 	logger.Info("openai response code:", resp.StatusCode)
 	logger.Info("openai response content: ", string(b))
 
@@ -206,10 +212,6 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 		a.output.WriteLine(fmt.Sprintf("openai response content:  %s", string(b)))
 	}
 
-	if err != nil {
-		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
-		return ""
-	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
