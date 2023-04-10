@@ -62,13 +62,25 @@ type OpenAiChatMessage struct {
 type OpenaiAction struct {
 	output *output.Output
 	ctx    context.Context
+	dir    string
+	suffix string
 }
 
 func NewOpenaiAction(step model.Step, ctx context.Context, output *output.Output) *OpenaiAction {
+	dir := step.With["dir"]
+	if dir == "" {
+		dir = "contracts"
+	}
+	suffix := step.With["suffix"]
+	if suffix == "" {
+		suffix = ".sol"
+	}
 
 	return &OpenaiAction{
 		ctx:    ctx,
 		output: output,
+		dir:    dir,
+		suffix: suffix,
 	}
 }
 
@@ -86,7 +98,7 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 	jobId, _ := stack["id"].(string)
 
 	var tmpPaths []string
-	files := utils.GetSuffixFiles(path.Join(workdir, "contracts"), ".sol", tmpPaths)
+	files := utils.GetSuffixFiles(path.Join(workdir, a.dir), a.suffix, tmpPaths)
 
 	var checkResult string
 	for _, f := range files {
@@ -170,7 +182,7 @@ func (a *OpenaiAction) askOpenAi(file string) string {
 func (a *OpenaiAction) askOpenAiChat(file string) string {
 	content, err := os.ReadFile(file)
 
-	prompt := fmt.Sprintf("%s\n### Security risk with above code", content)
+	prompt := fmt.Sprintf("%s\n### Security risk with above contract", content)
 
 	apiReq := OpenAiChatRequestBody{
 		Model: "gpt-3.5-turbo",
