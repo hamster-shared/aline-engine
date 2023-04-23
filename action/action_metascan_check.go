@@ -75,8 +75,8 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 		m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 		return nil, err
 	}
+	logger.Info("start query task status")
 	for {
-		logger.Info("start query task status")
 		taskStatusRes, err := QueryTaskStatus(startTaskRes.Data.Id, m.scanToken, m.organizationId)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
