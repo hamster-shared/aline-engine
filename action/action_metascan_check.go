@@ -16,7 +16,7 @@ import (
 
 type MetaScanCheckAction struct {
 	engineType     string
-	metaScanToken  string
+	scanToken      string
 	projectName    string
 	projectUrl     string
 	organizationId string
@@ -27,7 +27,7 @@ type MetaScanCheckAction struct {
 func NewMetaScanCheckAction(step model.Step, ctx context.Context, output *output.Output) *MetaScanCheckAction {
 	return &MetaScanCheckAction{
 		engineType:     step.With["engine_type"],
-		metaScanToken:  step.With["meta_scan_token"],
+		scanToken:      step.With["scan_token"],
 		projectName:    step.With["project_name"],
 		projectUrl:     step.With["project_url"],
 		organizationId: step.With["organization_id"],
@@ -39,10 +39,9 @@ func NewMetaScanCheckAction(step model.Step, ctx context.Context, output *output
 func (m *MetaScanCheckAction) Pre() error {
 	stack := m.ctx.Value(STACK).(map[string]interface{})
 	params := stack["parameter"].(map[string]string)
-	m.metaScanToken = utils.ReplaceWithParam(m.metaScanToken, params)
-	m.metaScanToken = fmt.Sprintf("Bearer %s", m.metaScanToken)
-
-	logger.Debugf("token is : %s", m.metaScanToken)
+	logger.Debugf("engine type is : %s", m.engineType)
+	m.scanToken = utils.ReplaceWithParam(m.scanToken, params)
+	logger.Debugf("token is : %s", m.scanToken)
 	m.projectName = utils.ReplaceWithParam(m.projectName, params)
 	logger.Debugf("project name is : %s", m.projectName)
 	m.projectUrl = utils.ReplaceWithParam(m.projectUrl, params)
@@ -53,7 +52,7 @@ func (m *MetaScanCheckAction) Pre() error {
 func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	//1.query project and create project
 	logger.Info("query meta scan project list ------")
-	data, err := GetProjectList(m.projectName, m.metaScanToken, m.organizationId)
+	data, err := GetProjectList(m.projectName, m.scanToken, m.organizationId)
 	if err != nil {
 		m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 		return nil, err
@@ -62,7 +61,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	if len(data.Data.Items) > 0 {
 		projectId = data.Data.Items[0].Id
 	} else {
-		project, err := CreateMetaScanProject(m.projectName, m.projectUrl, m.metaScanToken, m.organizationId)
+		project, err := CreateMetaScanProject(m.projectName, m.projectUrl, m.scanToken, m.organizationId)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
@@ -71,14 +70,14 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	}
 	//2.start scan
 	logger.Info("start scan ----------")
-	startTaskRes, err := StartScanTask(projectId, m.engineType, m.metaScanToken, m.organizationId)
+	startTaskRes, err := StartScanTask(projectId, m.engineType, m.scanToken, m.organizationId)
 	if err != nil {
 		m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 		return nil, err
 	}
 	for {
 		logger.Info("start query task status")
-		taskStatusRes, err := QueryTaskStatus(startTaskRes.Data.Id, m.metaScanToken, m.organizationId)
+		taskStatusRes, err := QueryTaskStatus(startTaskRes.Data.Id, m.scanToken, m.organizationId)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
@@ -100,7 +99,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	metaScanReport := model.MetaScanReport{}
 	if len(startTaskRes.Data.EngineTasks) > 0 {
 		logger.Info("query meta scan overview----------")
-		engineTaskSummaryRes, err := GetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id, m.metaScanToken, m.organizationId)
+		engineTaskSummaryRes, err := GetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id, m.scanToken, m.organizationId)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", "query task summary failed,save task summary failed"))
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
@@ -381,7 +380,7 @@ func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error)
 	url := "https://app.metatrust.io/api/scan/history/engine/{engineTaskId}/result"
 	var result TaskResultRes
 	res, err := utils.NewHttp().NewRequest().SetPathParam("engineTaskId", engineTaskId).SetHeaders(map[string]string{
-		"Authorization":  m.metaScanToken,
+		"Authorization":  m.scanToken,
 		"X-MetaScan-Org": m.organizationId,
 	}).SetResult(&result).Get(url)
 	if err != nil {
