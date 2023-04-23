@@ -40,11 +40,12 @@ func (m *MetaScanCheckAction) Pre() error {
 	stack := m.ctx.Value(STACK).(map[string]interface{})
 	params := stack["parameter"].(map[string]string)
 	m.metaScanToken = utils.ReplaceWithParam(m.metaScanToken, params)
+	m.metaScanToken = fmt.Sprintf("Bearer %s", m.metaScanToken)
 	logger.Debugf("token is : %s", m.metaScanToken)
 	m.projectName = utils.ReplaceWithParam(m.projectName, params)
 	logger.Debugf("project name is : %s", m.projectName)
 	m.projectUrl = utils.ReplaceWithParam(m.projectUrl, params)
-	logger.Debugf("k8s deploy project name is : %s", m.projectName)
+	logger.Debugf("project url is : %s", m.projectUrl)
 	return nil
 }
 
