@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/davecgh/go-spew v1.1.1
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/ipfs/go-ipfs-api v0.4.0
 	github.com/jinzhu/copier v0.3.5
 	github.com/sirupsen/logrus v1.9.0

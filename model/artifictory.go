@@ -27,10 +27,17 @@ type BuildInfo struct {
 	ImageName string `json:"imageName"`
 }
 
+type MetaScanReport struct {
+	Total          int64  `json:"total"`
+	CheckResult    string `json:"checkResult"`
+	ResultOverview string `json:"resultOverview"`
+}
+
 type ActionResult struct {
 	CodeInfo     string
-	Artifactorys []Artifactory `json:"artifactorys"`
-	Reports      []Report      `json:"reports"`
-	Deploys      []DeployInfo  `json:"deploys"`
-	BuildData    []BuildInfo   `json:"buildData"`
+	Artifactorys []Artifactory    `json:"artifactorys"`
+	Reports      []Report         `json:"reports"`
+	Deploys      []DeployInfo     `json:"deploys"`
+	BuildData    []BuildInfo      `json:"buildData"`
+	MetaScanData []MetaScanReport `json:"metaScanData"`
 }

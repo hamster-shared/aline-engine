@@ -146,6 +146,9 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if actionResult != nil && len(actionResult.BuildData) > 0 {
 			jobWrapper.BuildData = append(jobWrapper.BuildData, actionResult.BuildData...)
 		}
+		if actionResult != nil && len(actionResult.MetaScanData) > 0 {
+			jobWrapper.MetaScanData = append(jobWrapper.MetaScanData, actionResult.MetaScanData...)
+		}
 		if err != nil {
 			job.Status = model.STATUS_FAIL
 			return err
@@ -224,6 +227,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewK8sDeployAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "k8s-assign-domain" {
 				ah = action.NewK8sIngressAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "metascan_action" {
+				ah = action.NewMetaScanCheckAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "sol-profiler-check" {
 				ah = action.NewSolProfilerAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "solhint-check" {
