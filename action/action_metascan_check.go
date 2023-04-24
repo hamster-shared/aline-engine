@@ -21,6 +21,7 @@ type MetaScanCheckAction struct {
 	projectName    string
 	projectUrl     string
 	organizationId string
+	tool           string
 	ctx            context.Context
 	output         *output.Output
 }
@@ -29,6 +30,7 @@ func NewMetaScanCheckAction(step model.Step, ctx context.Context, output *output
 	return &MetaScanCheckAction{
 		engineType:     step.With["engine_type"],
 		scanToken:      step.With["scan_token"],
+		tool:           step.With["tool"],
 		projectName:    step.With["project_name"],
 		projectUrl:     step.With["project_url"],
 		organizationId: step.With["organization_id"],
@@ -122,6 +124,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 			return nil, err
 		}
 		metaScanReport.CheckResult = checkResult
+		metaScanReport.Tool = m.tool
 		actionResult.MetaScanData = append(actionResult.MetaScanData, metaScanReport)
 		return actionResult, nil
 	} else {
