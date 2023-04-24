@@ -8,13 +8,15 @@ type ContractCheckResult[T ResultDetailType] struct {
 	Tool        string                          `json:"tool"`
 	SolcVersion string                          `json:"solcVersion"`
 	Context     []ContractCheckResultDetails[T] `json:"context"`
+	Total       int                             `json:"total"`
 }
 
-func NewContractCheckResult[T ResultDetailType](name string, result string, tool string, context []ContractCheckResultDetails[T]) ContractCheckResult[T] {
+func NewContractCheckResult[T ResultDetailType](name string, result string, tool string, context []ContractCheckResultDetails[T], total int) ContractCheckResult[T] {
 	return ContractCheckResult[T]{
 		Name:    name,
 		Result:  result,
 		Tool:    tool,
+		Total:   total,
 		Context: context,
 	}
 }

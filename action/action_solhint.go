@@ -144,6 +144,7 @@ func (a *SolHintAction) Post() error {
 	}
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails]
 	successFlag := true
+	var total int
 	for _, info := range fileInfos {
 		path := path2.Join(a.path, info.Name())
 		var styleGuideValidationsReportDetailsList []model.ContractStyleGuideValidationsReportDetails
@@ -170,6 +171,7 @@ func (a *SolHintAction) Post() error {
 		}
 
 		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	var result string
@@ -178,7 +180,7 @@ func (a *SolHintAction) Post() error {
 	} else {
 		result = consts.CheckFail.Result
 	}
-	checkResult := model.NewContractCheckResult(consts.ContractStyleGuideValidationsReport.Name, result, consts.ContractStyleGuideValidationsReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.ContractStyleGuideValidationsReport.Name, result, consts.ContractStyleGuideValidationsReport.Tool, checkResultDetailsList, total)
 	fmt.Println(checkResult)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	if err != nil {
