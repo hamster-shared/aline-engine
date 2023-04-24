@@ -298,6 +298,7 @@ func (a *EthGasReporterAction) Post() error {
 			continue
 		}
 	}
+	var total int
 	unitTestResult.Issue = issues
 	unitTestResult.GasLimit = gasLimit
 	unitTestResultMarshal, err := json.Marshal(unitTestResultList)
@@ -305,6 +306,7 @@ func (a *EthGasReporterAction) Post() error {
 		return err
 	}
 	unitTestResult.Message = unitTestResultMarshal
+	total = total + unitTestResult.Issue
 	checkResultDetailsList = append(checkResultDetailsList, unitTestResult)
 
 	issuesInfo.Issue = issues
@@ -314,6 +316,7 @@ func (a *EthGasReporterAction) Post() error {
 		return err
 	}
 	issuesInfo.Message = issuesInfoMarshal
+	total = total + issuesInfo.Issue
 	checkResultDetailsList = append(checkResultDetailsList, issuesInfo)
 
 	gasUsageForMethods.Issue = issues
@@ -323,6 +326,7 @@ func (a *EthGasReporterAction) Post() error {
 		return err
 	}
 	gasUsageForMethods.Message = gasUsageForMethodsMarshal
+	total = total + gasUsageForMethods.Issue
 	checkResultDetailsList = append(checkResultDetailsList, gasUsageForMethods)
 
 	gasUsageForDeployments.Issue = issues
@@ -332,6 +336,7 @@ func (a *EthGasReporterAction) Post() error {
 		return err
 	}
 	gasUsageForDeployments.Message = gasUsageForDeploymentsMarshal
+	total = total + gasUsageForDeployments.Issue
 	checkResultDetailsList = append(checkResultDetailsList, gasUsageForDeployments)
 
 	var result string
@@ -340,7 +345,7 @@ func (a *EthGasReporterAction) Post() error {
 	} else {
 		result = consts.CheckFail.Result
 	}
-	checkResult := model.NewContractCheckResult(consts.EthGasCheckReport.Name, result, consts.EthGasCheckReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.EthGasCheckReport.Name, result, consts.EthGasCheckReport.Tool, checkResultDetailsList, total)
 	checkResult.SolcVersion = solcVersion
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	fmt.Println(checkResult)

@@ -158,6 +158,7 @@ func (a *MoveProverAction) Post() error {
 	}
 	successFlag := true
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails]
+	var total int
 	for _, info := range fileInfos {
 		path := path2.Join(a.path, info.Name())
 		var styleGuideValidationsReportDetailsList []model.ContractStyleGuideValidationsReportDetails
@@ -202,6 +203,7 @@ func (a *MoveProverAction) Post() error {
 			successFlag = false
 		}
 		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.MoveFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	var result string
@@ -210,7 +212,7 @@ func (a *MoveProverAction) Post() error {
 	} else {
 		result = consts.CheckFail.Result
 	}
-	checkResult := model.NewContractCheckResult(consts.FormalSpecificationAndVerificationReport.Name, result, consts.FormalSpecificationAndVerificationReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.FormalSpecificationAndVerificationReport.Name, result, consts.FormalSpecificationAndVerificationReport.Tool, checkResultDetailsList, total)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	fmt.Println(checkResult)
 	if err != nil {
