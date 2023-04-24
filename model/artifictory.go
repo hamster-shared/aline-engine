@@ -31,6 +31,7 @@ type MetaScanReport struct {
 	Total          int64  `json:"total"`
 	CheckResult    string `json:"checkResult"`
 	ResultOverview string `json:"resultOverview"`
+	Tool           string `json:"tool""`
 }
 
 type ActionResult struct {
