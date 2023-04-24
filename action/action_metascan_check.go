@@ -10,6 +10,7 @@ import (
 	"github.com/hamster-shared/aline-engine/output"
 	"github.com/hamster-shared/aline-engine/utils"
 	"github.com/jinzhu/copier"
+	"github.com/tidwall/gjson"
 	"log"
 	"strings"
 )
@@ -399,6 +400,9 @@ func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error)
 	case "STATIC":
 		resultReport, err := formatSAData(result)
 		return resultReport, err
+	case "LINT":
+		resultReport, err := formatCQData(result)
+		return resultReport, err
 	default:
 		return result.Data.Result, nil
 	}
@@ -511,6 +515,89 @@ type FormatSecurityAnalyzerResult struct {
 	Filepath string                        `json:"filepath"`
 	Mwe      []FormatMalwareWorkflowEngine `json:"mwe"`
 	FileKey  string                        `json:"fileKey"`
+}
+
+func formatCQData(results TaskResultRes) (string, error) {
+	result := results.Data.Result
+	var cqJson CQJson
+	FileMapping := make(map[string]string)
+	cqJson.Issues = make(map[string]Issue)
+	cqJson.Version = gjson.Get(result, "version").String()
+	cqJson.Success = gjson.Get(result, "success").Bool()
+	fileMap := gjson.Get(result, "file_mapping").Map()
+	for k, v := range fileMap {
+		FileMapping[k] = v.String()
+	}
+	cqJson.Message = gjson.Get(result, "message").String()
+	for _, v := range gjson.Get(result, "results").Array() {
+		code := v.Get("code").String()
+		category := v.Get("category").String()
+		severity := v.Get("severity").String()
+		title := v.Get("title").String()
+		description := v.Get("description").String()
+		for _, af := range v.Get("affectedFiles").Array() {
+			filePath := af.Get("filePath").String()
+			line := af.Get("range").Get("start").Get("line").Int()
+			column := af.Get("range").Get("start").Get("column").Int()
+			highlightsArray := af.Get("highlights").Array()
+			var highlights []int64
+			for _, hl := range highlightsArray {
+				highlights = append(highlights, hl.Int())
+			}
+			detail := Detail{
+				Code:        code,
+				Category:    category,
+				Severity:    severity,
+				Title:       title,
+				Description: description,
+				AffectedFiles: CQAffectedFile{
+					Line:       line,
+					Column:     column,
+					Highlights: highlights,
+				},
+			}
+			issues := cqJson.Issues[filePath]
+			issues.FilePath = filePath
+			issues.FileAddress = FileMapping[filePath]
+			issues.Details = append(issues.Details, detail)
+			cqJson.Issues[filePath] = issues
+		}
+	}
+	jsonData, err := json.Marshal(&cqJson)
+	if err != nil {
+		logger.Errorf("json marshal is failed:%s", err)
+	}
+	return string(jsonData), nil
+}
+
+type CQJson struct {
+	Version string
+	Success bool
+	Message string
+	Issues  map[string]Issue
+}
+
+type Issue struct {
+	FilePath    string
+	FileAddress string
+	// 该文件具有的问题
+	Details []Detail
+}
+
+// Detail 具体出现的问题
+type Detail struct {
+	Code          string
+	Category      string
+	Severity      string
+	Title         string
+	Description   string
+	AffectedFiles CQAffectedFile
+}
+
+type CQAffectedFile struct {
+	Line       int64
+	Column     int64
+	Highlights []int64
 }
 
 func GetFile() {
