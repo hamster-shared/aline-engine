@@ -400,6 +400,9 @@ func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error)
 	case "STATIC":
 		resultReport, err := formatSAData(result)
 		return resultReport, err
+	case "PROVER":
+		resultReport, err := formatSPData(result)
+		return resultReport, err
 	case "LINT":
 		resultReport, err := formatCQData(result)
 		return resultReport, err
@@ -598,6 +601,138 @@ type CQAffectedFile struct {
 	Line       int64
 	Column     int64
 	Highlights []int64
+}
+
+func formatSPData(results TaskResultRes) (string, error) {
+	result := results.Data.Result
+	var resultData SecurityProverResponse
+	if err := json.Unmarshal([]byte(result), &resultData); err != nil {
+		return "", err
+	}
+	var spJson SPJson
+	spJson.Version = resultData.Version
+	spJson.Success = resultData.Success
+	spJson.Message = resultData.Message
+	FileMapping := make(map[string]string)
+	spJson.Issues = make(map[string]SPIssue)
+	fileMap := resultData.FileMapping
+	for k, v := range fileMap {
+		FileMapping[k] = v
+	}
+	for _, r := range resultData.Results {
+		for _, af := range r.AffectedFiles {
+			spAf := SPAffectedFiles{
+				Text:       af.Text,
+				Range:      af.Range,
+				Highlights: af.Highlights,
+			}
+			detail := SPDetail{
+				ID:            r.ID,
+				Code:          r.Code,
+				Severity:      r.Severity,
+				Title:         r.Title,
+				Description:   r.Description,
+				Function:      r.Function,
+				AffectedFiles: spAf,
+				Poc:           r.Poc,
+			}
+			filePath := af.FilePath
+			issues := spJson.Issues[filePath]
+			issues.FilePath = filePath
+			issues.FileAddress = FileMapping[filePath]
+			issues.Details = append(issues.Details, detail)
+			spJson.Issues[filePath] = issues
+		}
+	}
+	jsonData, err := json.Marshal(&spJson)
+	if err != nil {
+		logger.Errorf("json marshal is failed:%s", err)
+	}
+	return string(jsonData), nil
+}
+
+type SPJson struct {
+	Version string
+	Success bool
+	Message string
+	Issues  map[string]SPIssue
+}
+
+type SPIssue struct {
+	FilePath    string
+	FileAddress string
+	// 该文件具有的问题
+	Details []SPDetail
+}
+
+type SPDetail struct {
+	ID            string
+	Code          string
+	Severity      string
+	Title         string
+	Description   string
+	Function      string          `json:"function"`
+	AffectedFiles SPAffectedFiles `json:"affectedFiles"`
+	Poc           []Poc           `json:"poc"`
+}
+
+type SPAffectedFiles struct {
+	Text       string       `json:"text"`
+	Range      Range        `json:"range"`
+	Highlights []Highlights `json:"highlights"`
+}
+
+type SecurityProverResponse struct {
+	Results     []SecurityProverResults `json:"securityProverResults"`
+	FileMapping map[string]string       `json:"file_mapping"`
+	Success     bool                    `json:"success"`
+	Error       string                  `json:"error"`
+	Message     string                  `json:"message"`
+	Version     string                  `json:"version"`
+}
+
+type SecurityProverResults struct {
+	ID            string          `json:"id"`
+	Code          string          `json:"code"`
+	Severity      string          `json:"severity"`
+	Title         string          `json:"title"`
+	Description   string          `json:"description"`
+	Function      string          `json:"function"`
+	AffectedFiles []AffectedFiles `json:"affectedFiles"`
+	Poc           []Poc           `json:"poc"`
+}
+
+type Poc struct {
+	FunctionName string        `json:"functionName"`
+	Parameters   []interface{} `json:"parameters"`
+	Location     string        `json:"location"`
+	CallDepth    int           `json:"callDepth"`
+}
+
+type AffectedFiles struct {
+	FilePath   string       `json:"filePath"`
+	Text       string       `json:"text"`
+	Range      Range        `json:"range"`
+	Highlights []Highlights `json:"highlights"`
+}
+
+type Range struct {
+	Start Start `json:"start"`
+	End   End   `json:"end"`
+}
+
+type Highlights struct {
+	Start Start `json:"start"`
+	End   End   `json:"end"`
+}
+
+type Start struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+type End struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
 }
 
 func GetFile() {
