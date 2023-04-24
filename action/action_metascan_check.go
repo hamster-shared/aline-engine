@@ -406,6 +406,8 @@ func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error)
 	case "PROVER":
 		resultReport, err := formatSPData(result)
 		return resultReport, err
+	case "SCA":
+		return result.Data.Result, nil
 	case "LINT":
 		resultReport, err := formatCQData(result)
 		return resultReport, err
