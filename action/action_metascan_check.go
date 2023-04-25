@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
@@ -55,7 +56,7 @@ func (m *MetaScanCheckAction) Pre() error {
 func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	//1.query project and create project
 	logger.Info("query meta scan project list ------")
-	data, err := GetProjectList(m.projectName, m.scanToken, m.organizationId)
+	data, err := m.metaScanGetProjects()
 	if err != nil {
 		m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 		return nil, err
@@ -64,7 +65,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	if len(data.Data.Items) > 0 {
 		projectId = data.Data.Items[0].Id
 	} else {
-		project, err := CreateMetaScanProject(m.projectName, m.projectUrl, m.scanToken, m.organizationId)
+		project, err := m.metaScanCreateProject()
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
@@ -73,14 +74,14 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	}
 	//2.start scan
 	logger.Info("start scan ----------")
-	startTaskRes, err := StartScanTask(projectId, m.engineType, m.scanToken, m.organizationId)
+	startTaskRes, err := m.metaScanStartScanTask(projectId)
 	if err != nil {
 		m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 		return nil, err
 	}
 	logger.Info("start query task status")
 	for {
-		taskStatusRes, err := QueryTaskStatus(startTaskRes.Data.Id, m.scanToken, m.organizationId)
+		taskStatusRes, err := m.metaScanQueryTaskStatus(startTaskRes.Data.Id)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
@@ -102,7 +103,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	metaScanReport := model.MetaScanReport{}
 	if len(startTaskRes.Data.EngineTasks) > 0 {
 		logger.Info("query meta scan overview----------")
-		engineTaskSummaryRes, err := GetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id, m.scanToken, m.organizationId)
+		engineTaskSummaryRes, err := m.metaScanGetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", "query task summary failed,save task summary failed"))
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
@@ -118,7 +119,7 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 		metaScanReport.Total = int64(total)
 		metaScanReport.ResultOverview = string(overview)
 		logger.Info("query meta scan result ----------------")
-		checkResult, err := m.getTaskResult(startTaskRes.Data.EngineTasks[0].Id)
+		checkResult, err := m.metaScanGetTaskResult(startTaskRes.Data.EngineTasks[0].Id)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
@@ -138,7 +139,39 @@ func (m *MetaScanCheckAction) Post() error {
 	return nil
 }
 
-func GetProjectList(title, token, organizationId string) (MetaProjectRes, error) {
+func (m *MetaScanCheckAction) metaScanGetProjects() (MetaProjectRes, error) {
+	res, result, err := getProjectList(m.projectName, m.scanToken, m.organizationId)
+	if err != nil {
+		logger.Errorf("get meta scan projects failed: %s", err)
+		return result, err
+	}
+	if res.StatusCode() == 401 {
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return result, errors.New("Failed to retrieve token again")
+		}
+		res, result, err = getProjectList(m.projectName, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("get meta scan projects failed again: %s", err)
+			return result, err
+		}
+		if res.StatusCode() == 401 {
+			return result, errors.New("No permission to obtain meta scan projects")
+		}
+	}
+	if res.StatusCode() != 200 {
+		logger.Errorf("get project list failed:%s", res.Error())
+		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+	}
+	return result, nil
+}
+
+func getProjectList(title, token, organizationId string) (*resty.Response, MetaProjectRes, error) {
 	url := "https://app.metatrust.io/api/project"
 	var result MetaProjectRes
 	res, err := utils.NewHttp().NewRequest().SetQueryParams(map[string]string{
@@ -148,19 +181,7 @@ func GetProjectList(title, token, organizationId string) (MetaProjectRes, error)
 			"Authorization":  token,
 			"X-MetaScan-Org": organizationId,
 		}).Get(url)
-	if err != nil {
-		logger.Errorf("get meta scan projects failed: %s", err)
-		return result, err
-	}
-	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to obtain meta scan projects:%s", res.Error())
-		return result, errors.New("No permission to obtain meta scan projects")
-	}
-	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
-	}
-	return result, nil
+	return res, result, err
 }
 
 type MetaScanProject struct {
@@ -178,7 +199,40 @@ type MetaProjectsData struct {
 	Items      []MetaScanProject `json:"items"`
 }
 
-func CreateMetaScanProject(title, repoUrl, token, organizationId string) (CreateProjectRes, error) {
+func (m *MetaScanCheckAction) metaScanCreateProject() (CreateProjectRes, error) {
+	res, result, err := createMetaScanProject(m.projectName, m.projectUrl, m.scanToken, m.organizationId)
+	if err != nil {
+		logger.Errorf("create meta scan project failed:%s", err)
+		return result, err
+	}
+	if res.StatusCode() == 401 {
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return result, errors.New("Failed to retrieve token again")
+		}
+		res, result, err = createMetaScanProject(m.projectName, m.projectUrl, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("Again create meta scan project failed:%s", err)
+			return result, err
+		}
+		if res.StatusCode() == 401 {
+			logger.Errorf("Again no permission to obtain meta scan projects:%s", res.Error())
+			return result, errors.New("Again no permission to create meta scan project")
+		}
+	}
+	if res.StatusCode() != 200 {
+		logger.Errorf("get project list failed:%s", res.Error())
+		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+	}
+	return result, nil
+}
+
+func createMetaScanProject(title, repoUrl, token, organizationId string) (*resty.Response, CreateProjectRes, error) {
 	url := "https://app.metatrust.io/api/project"
 	githubUrl := handleRepoUrl(repoUrl)
 	createData := struct {
@@ -197,19 +251,7 @@ func CreateMetaScanProject(title, repoUrl, token, organizationId string) (Create
 			"X-MetaScan-Org": organizationId,
 			"Content-Type":   "application/json",
 		}).SetResult(&result).Post(url)
-	if err != nil {
-		logger.Errorf("create meta scan project failed:%s", err)
-		return result, err
-	}
-	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to obtain meta scan projects:%s", res.Error())
-		return result, errors.New("No permission to create meta scan project")
-	}
-	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
-	}
-	return result, nil
+	return res, result, err
 }
 
 type CreateProjectRes struct {
@@ -218,7 +260,40 @@ type CreateProjectRes struct {
 	Code    int64           `json:"code"`
 }
 
-func StartScanTask(projectId, engineType, token, organizationId string) (StartTaskRes, error) {
+func (m *MetaScanCheckAction) metaScanStartScanTask(projectId string) (StartTaskRes, error) {
+	res, result, err := startScanTask(projectId, m.engineType, m.scanToken, m.organizationId)
+	if err != nil {
+		logger.Errorf("start scan failed:%s", err)
+		return result, err
+	}
+	if res.StatusCode() == 401 {
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return result, errors.New("Failed to retrieve token again")
+		}
+		res, result, err = startScanTask(projectId, m.engineType, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("Again start scan failed:%s", err)
+			return result, err
+		}
+		if res.StatusCode() == 401 {
+			logger.Errorf("Again no permission to obtain meta scan projects:%s", res.Error())
+			return result, errors.New("Again no permission to start scan")
+		}
+	}
+	if res.StatusCode() != 200 {
+		logger.Errorf("get project list failed:%s", res.Error())
+		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+	}
+	return result, nil
+}
+
+func startScanTask(projectId, engineType, token, organizationId string) (*resty.Response, StartTaskRes, error) {
 	url := "https://app.metatrust.io/api/scan/task"
 	var types []string
 	types = append(types, engineType)
@@ -258,19 +333,7 @@ func StartScanTask(projectId, engineType, token, organizationId string) (StartTa
 		"X-MetaScan-Org": organizationId,
 		"Content-Type":   "application/json",
 	}).SetResult(&result).Post(url)
-	if err != nil {
-		logger.Errorf("start scan failed:%s", err)
-		return result, err
-	}
-	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to obtain meta scan projects:%s", res.Error())
-		return result, errors.New("No permission to start scan")
-	}
-	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
-	}
-	return result, nil
+	return res, result, err
 }
 
 type Repo struct {
@@ -305,26 +368,46 @@ type TaskEnv struct {
 	Variables      string `json:"variables"`
 }
 
-func QueryTaskStatus(taskId, token, organizationId string) (TaskStatusRes, error) {
-	url := "https://app.metatrust.io/api/scan/state"
-	var result TaskStatusRes
-	res, err := utils.NewHttp().NewRequest().SetQueryParam("taskId", taskId).SetHeaders(map[string]string{
-		"Authorization":  token,
-		"X-MetaScan-Org": organizationId,
-	}).SetResult(&result).Get(url)
+func (m *MetaScanCheckAction) metaScanQueryTaskStatus(taskId string) (TaskStatusRes, error) {
+	res, result, err := queryTaskStatus(taskId, m.scanToken, m.organizationId)
 	if err != nil {
 		logger.Errorf("http request query task status failed:%s", err)
 		return result, err
 	}
 	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to query task status :%s", res.Error())
-		return result, errors.New("No permission to query task status")
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return result, errors.New("Failed to retrieve token again")
+		}
+		res, result, err = queryTaskStatus(taskId, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("Again http request query task status failed:%s", err)
+			return result, err
+		}
+		if res.StatusCode() == 401 {
+			logger.Errorf("Again no permission to query task status :%s", res.Error())
+			return result, errors.New("Again no permission to query task status")
+		}
 	}
 	if res.StatusCode() != 200 {
 		logger.Errorf("query task status failed:%s", res.Error())
 		return result, errors.New(fmt.Sprintf("%v", res.Error()))
 	}
 	return result, nil
+}
+func queryTaskStatus(taskId, token, organizationId string) (*resty.Response, TaskStatusRes, error) {
+	url := "https://app.metatrust.io/api/scan/state"
+	var result TaskStatusRes
+	res, err := utils.NewHttp().NewRequest().SetQueryParam("taskId", taskId).SetHeaders(map[string]string{
+		"Authorization":  token,
+		"X-MetaScan-Org": organizationId,
+	}).SetResult(&result).Get(url)
+	return res, result, err
 }
 
 type TaskStatusRes struct {
@@ -335,27 +418,47 @@ type TaskStatus struct {
 	State string `json:"state"`
 }
 
-func GetEngineTaskSummary(engineTaskId, token, organizationId string) (SummaryDataRes, error) {
-	url := "https://app.metatrust.io/api/scan/engineTask/{engineTaskId}"
-	var result SummaryDataRes
-	res, err := utils.NewHttp().NewRequest().SetPathParam("engineTaskId", engineTaskId).SetHeaders(map[string]string{
-		"Authorization":  token,
-		"X-MetaScan-Org": organizationId,
-	}).SetResult(&result).Get(url)
-	log.Println(res.StatusCode())
+func (m *MetaScanCheckAction) metaScanGetEngineTaskSummary(engineTaskId string) (SummaryDataRes, error) {
+	res, result, err := getEngineTaskSummary(engineTaskId, m.scanToken, m.organizationId)
 	if err != nil {
 		logger.Errorf("http request query engine task summary failed:%s", err)
 		return result, err
 	}
 	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to query engine task summary :%s", res.Error())
-		return result, errors.New("No permission to query engine task summary")
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return result, errors.New("Failed to retrieve token again")
+		}
+		res, result, err = getEngineTaskSummary(engineTaskId, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("Again http request query engine task summary failed:%s", err)
+			return result, err
+		}
+		if res.StatusCode() == 401 {
+			logger.Errorf("Again no permission to query engine task summary :%s", res.Error())
+			return result, errors.New("Again no permission to query engine task summary")
+		}
 	}
 	if res.StatusCode() != 200 {
 		logger.Errorf("query engine task summary failed:%s", res.Error())
 		return result, errors.New(fmt.Sprintf("%v", res.Error()))
 	}
 	return result, nil
+}
+
+func getEngineTaskSummary(engineTaskId, token, organizationId string) (*resty.Response, SummaryDataRes, error) {
+	url := "https://app.metatrust.io/api/scan/engineTask/{engineTaskId}"
+	var result SummaryDataRes
+	res, err := utils.NewHttp().NewRequest().SetPathParam("engineTaskId", engineTaskId).SetHeaders(map[string]string{
+		"Authorization":  token,
+		"X-MetaScan-Org": organizationId,
+	}).SetResult(&result).Get(url)
+	return res, result, err
 }
 
 type SummaryDataRes struct {
@@ -380,20 +483,31 @@ type Impact struct {
 	Informational int `json:"INFORMATIONAL"`
 }
 
-func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error) {
-	url := "https://app.metatrust.io/api/scan/history/engine/{engineTaskId}/result"
-	var result TaskResultRes
-	res, err := utils.NewHttp().NewRequest().SetPathParam("engineTaskId", engineTaskId).SetHeaders(map[string]string{
-		"Authorization":  m.scanToken,
-		"X-MetaScan-Org": m.organizationId,
-	}).SetResult(&result).Get(url)
+func (m *MetaScanCheckAction) metaScanGetTaskResult(engineTaskId string) (string, error) {
+	res, result, err := getTaskResult(engineTaskId, m.scanToken, m.organizationId)
 	if err != nil {
 		logger.Errorf("http request query engine task result failed:%s", err)
 		return "", err
 	}
 	if res.StatusCode() == 401 {
-		logger.Errorf("No permission to query engine task result :%s", res.Error())
-		return "", errors.New("No permission to query engine task result")
+		token := metaScanHttpRequestToken()
+		if token != "" {
+			m.scanToken = token
+			stack := m.ctx.Value(STACK).(map[string]interface{})
+			params := stack["parameter"].(map[string]string)
+			params["scanToken"] = token
+		} else {
+			return "", errors.New("Failed to retrieve token again")
+		}
+		res, result, err = getTaskResult(engineTaskId, m.scanToken, m.organizationId)
+		if err != nil {
+			logger.Errorf("Again http request query engine task result failed:%s", err)
+			return "", err
+		}
+		if res.StatusCode() == 401 {
+			logger.Errorf("Again no permission to query engine task result :%s", res.Error())
+			return "", errors.New("Again no permission to query engine task result")
+		}
 	}
 	if res.StatusCode() != 200 {
 		logger.Errorf("query engine task result failed:%s", res.Error())
@@ -414,6 +528,16 @@ func (m *MetaScanCheckAction) getTaskResult(engineTaskId string) (string, error)
 	default:
 		return result.Data.Result, nil
 	}
+}
+
+func getTaskResult(engineTaskId, scanToken, organizationId string) (*resty.Response, TaskResultRes, error) {
+	url := "https://app.metatrust.io/api/scan/history/engine/{engineTaskId}/result"
+	var result TaskResultRes
+	res, err := utils.NewHttp().NewRequest().SetPathParam("engineTaskId", engineTaskId).SetHeaders(map[string]string{
+		"Authorization":  scanToken,
+		"X-MetaScan-Org": organizationId,
+	}).SetResult(&result).Get(url)
+	return res, result, err
 }
 
 func formatSAData(result TaskResultRes) (string, error) {
@@ -740,16 +864,30 @@ type End struct {
 	Column int `json:"column"`
 }
 
-func GetFile() {
-	url := "https://app.metatrust.io/api/scan/history/vulnerability-files/8f82c7ad-cacd-418a-bcd2-cbb4218c3f86/Functions.sol"
-	res, err := utils.NewHttp().NewRequest().SetHeaders(map[string]string{
-		"Authorization":  "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJiYXdqN2JZQjdHX2MtVDJXNmFiQkIwMHZld2xoaHZLVVNfSXJUTDFBdUs4In0.eyJleHAiOjE2ODIwNzIxMjMsImlhdCI6MTY4MjA3MDMyMywianRpIjoiOTA4NjE5NzgtNjgyZC00MDJhLTkxYTQtZWNlNDZiZDJkZDdlIiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50Lm1ldGF0cnVzdC5pby9yZWFsbXMvbXQiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiMjEzNjdlMGQtYWQ0NC00YTMwLWI4OWUtMDRmNDM2NWE4ZmM3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoid2ViYXBwIiwic2Vzc2lvbl9zdGF0ZSI6IjEyNjg4ZjkxLTFhNDQtNGIwZS1iMjQzLTdjNDg3OTIxZjE2NSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAubWV0YXRydXN0LmlvIiwiaHR0cHM6Ly9tZXRhdHJ1c3QuaW8iLCJodHRwczovL3d3dy5tZXRhdHJ1c3QuaW8iXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImRlZmF1bHQtcm9sZXMtbXQiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwiZGVsZXRlLWFjY291bnQiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiIxMjY4OGY5MS0xYTQ0LTRiMGUtYjI0My03YzQ4NzkyMWYxNjUiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicHJlZmVycmVkX3VzZXJuYW1lIjoidG9tQGhhbXN0ZXJuZXQuaW8iLCJlbWFpbCI6InRvbUBoYW1zdGVybmV0LmlvIiwidXNlcm5hbWUiOiJ0b21AaGFtc3Rlcm5ldC5pbyJ9.r_jaYmHjlHHDN2e93pHF9OKhUNpdZuZv5lUOrjlEWGtY0VsR2KIVu0SZVow0ygB6BatmKo10gdZliFGBl5mqbYjPhcvpmc8QRNXXJt2E80k9wc4gL1wtUWkds3wrBVDNpQ4PoxOvAIupPOKPLeA6R1OrnGsFgZBXy34ybc8gcTUGjNeuuWHTs6efdFhkFs7kX0LE1FnN6827LfL-Igi5XMVKcTpeJZhMTr-Mb4yGsZCtXZt_MSIlkvcbBE44jgNRB4eaCEGCbiagHjPe5ZFejZ8Q-Hf8gjkRxRx4x3uBxAHyjJgbrdhwilV4RALJT0w8AMrzPyJoG2JrtrSsGK2tDw",
-		"X-MetaScan-Org": "1098616244203945984",
-	}).Get(url)
-	if err != nil {
-		log.Println("获取失败")
-		return
+func metaScanHttpRequestToken() string {
+	url := "https://account.metatrust.io/realms/mt/protocol/openid-connect/token"
+	token := struct {
+		AccessToken      string `json:"access_token"`
+		ExpiresIn        int64  `json:"expires_in"`
+		RefreshExpiresIn int64  `json:"refresh_expires_in"`
+		RefreshToken     string `json:"refresh_token"`
+		TokenType        string `json:"token_type"`
+		NotBeforePolicy  int    `json:"not-before-policy"`
+		SessionState     string `json:"session_state"`
+		Scope            string `json:"scope"`
+	}{}
+	res, err := utils.NewHttp().NewRequest().SetFormData(map[string]string{
+		"grant_type": "password",
+		"username":   "tom@hamsternet.io",
+		"password":   "pysded-hismoh-3Dagcy",
+		"client_id":  "webapp",
+	}).SetResult(&token).SetHeader("Content-Type", "application/x-www-form-urlencoded").Post(url)
+	if res.StatusCode() != 200 {
+		return ""
 	}
-	log.Println(res.StatusCode())
-	log.Println(string(res.Body()))
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s %s", token.TokenType, token.AccessToken)
+	//return token.AccessToken
 }
