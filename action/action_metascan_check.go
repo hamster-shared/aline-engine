@@ -13,6 +13,7 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/tidwall/gjson"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -902,8 +903,8 @@ func metaScanHttpRequestToken() string {
 	}{}
 	res, err := utils.NewHttp().NewRequest().SetFormData(map[string]string{
 		"grant_type": "password",
-		"username":   "tom@hamsternet.io",
-		"password":   "pysded-hismoh-3Dagcy",
+		"username":   os.Getenv("METASCAN_USERNAME"),
+		"password":   os.Getenv("METASCAN_PASSWORD"),
 		"client_id":  "webapp",
 	}).SetResult(&token).SetHeader("Content-Type", "application/x-www-form-urlencoded").Post(url)
 	if res.StatusCode() != 200 {
