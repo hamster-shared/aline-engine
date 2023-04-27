@@ -553,7 +553,7 @@ func formatSAData(result TaskResultRes) (string, error) {
 		}
 	}
 	groups := make(map[string][]AffectedFile)
-	resultMap := make(map[string][]FormatSecurityAnalyzerResult)
+	resultMap := make(map[string]FormatSecurityAnalyzerResult)
 	for _, p := range files {
 		groups[p.Filepath] = append(groups[p.Filepath], p)
 	}
@@ -563,21 +563,19 @@ func formatSAData(result TaskResultRes) (string, error) {
 			if ok {
 				_, ok := resultMap[file.Filepath]
 				if !ok {
-					var newData []FormatSecurityAnalyzerResult
+					var newData FormatSecurityAnalyzerResult
+					newData.FileKey = resultData.FileMapping[file.Filepath]
+					newData.Filepath = file.Filepath
 					resultMap[file.Filepath] = newData
 				}
 				resultMapData, _ := resultMap[file.Filepath]
-				var data FormatSecurityAnalyzerResult
 				var engine FormatMalwareWorkflowEngine
 				copier.Copy(&engine, &analyzerResult.Mwe)
-				data.Filepath = file.Filepath
 				engine.ShowTitle = analyzerResult.ShowTitle
 				engine.Hightlights = file.Hightlights
 				engine.LineStart = file.LineStart
 				engine.LineEnd = file.LineEnd
-				data.Mwe = append(data.Mwe, engine)
-				data.FileKey = resultData.FileMapping[file.Filepath]
-				resultMapData = append(resultMapData, data)
+				resultMapData.Mwe = append(resultMapData.Mwe, engine)
 				resultMap[file.Filepath] = resultMapData
 			}
 		}
