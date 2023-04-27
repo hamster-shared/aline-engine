@@ -102,30 +102,32 @@ func (m *MetaScanCheckAction) Hook() (*model.ActionResult, error) {
 	actionResult := &model.ActionResult{}
 	metaScanReport := model.MetaScanReport{}
 	if len(startTaskRes.Data.EngineTasks) > 0 {
-		logger.Info("query meta scan overview----------")
-		engineTaskSummaryRes, err := m.metaScanGetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id)
-		if err != nil {
-			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", "query task summary failed,save task summary failed"))
-			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
-			return nil, err
-		}
-		overview, err := json.Marshal(engineTaskSummaryRes.Data.ResultOverview.Impact)
-		if err != nil {
-			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
-			return nil, err
-		}
-		total := engineTaskSummaryRes.Data.ResultOverview.Impact.Medium + engineTaskSummaryRes.Data.ResultOverview.Impact.Low + engineTaskSummaryRes.Data.ResultOverview.Impact.Informational +
-			engineTaskSummaryRes.Data.ResultOverview.Impact.High + engineTaskSummaryRes.Data.ResultOverview.Impact.Critical
-		metaScanReport.Total = int64(total)
-		metaScanReport.ResultOverview = string(overview)
 		logger.Info("query meta scan result ----------------")
-		checkResult, err := m.metaScanGetTaskResult(startTaskRes.Data.EngineTasks[0].Id)
+		checkResult, overviewData, err := m.metaScanGetTaskResult(startTaskRes.Data.EngineTasks[0].Id)
 		if err != nil {
 			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
 			return nil, err
 		}
 		metaScanReport.CheckResult = checkResult
 		metaScanReport.Tool = m.tool
+		logger.Info("query meta scan overview----------")
+		if m.engineType != "STATIC" {
+			engineTaskSummaryRes, err := m.metaScanGetEngineTaskSummary(startTaskRes.Data.EngineTasks[0].Id)
+			if err != nil {
+				m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", "query task summary failed,save task summary failed"))
+				m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
+				return nil, err
+			}
+			overviewData = engineTaskSummaryRes.Data.ResultOverview.Impact
+		}
+		total := overviewData.High + overviewData.Low + overviewData.Medium + overviewData.Informational + overviewData.Critical
+		overview, err := json.Marshal(overviewData)
+		if err != nil {
+			m.output.WriteLine(fmt.Sprintf("[ERROR]: %s", err.Error()))
+			return nil, err
+		}
+		metaScanReport.Total = int64(total)
+		metaScanReport.ResultOverview = string(overview)
 		actionResult.MetaScanData = append(actionResult.MetaScanData, metaScanReport)
 		return actionResult, nil
 	} else {
@@ -483,11 +485,13 @@ type Impact struct {
 	Informational int `json:"INFORMATIONAL"`
 }
 
-func (m *MetaScanCheckAction) metaScanGetTaskResult(engineTaskId string) (string, error) {
+//string:check result string:overview
+func (m *MetaScanCheckAction) metaScanGetTaskResult(engineTaskId string) (string, Impact, error) {
+	var impact Impact
 	res, result, err := getTaskResult(engineTaskId, m.scanToken, m.organizationId)
 	if err != nil {
 		logger.Errorf("http request query engine task result failed:%s", err)
-		return "", err
+		return "", impact, err
 	}
 	if res.StatusCode() == 401 {
 		token := metaScanHttpRequestToken()
@@ -497,36 +501,36 @@ func (m *MetaScanCheckAction) metaScanGetTaskResult(engineTaskId string) (string
 			params := stack["parameter"].(map[string]string)
 			params["scanToken"] = token
 		} else {
-			return "", errors.New("Failed to retrieve token again")
+			return "", impact, errors.New("Failed to retrieve token again")
 		}
 		res, result, err = getTaskResult(engineTaskId, m.scanToken, m.organizationId)
 		if err != nil {
 			logger.Errorf("Again http request query engine task result failed:%s", err)
-			return "", err
+			return "", impact, err
 		}
 		if res.StatusCode() == 401 {
 			logger.Errorf("Again no permission to query engine task result :%s", res.Error())
-			return "", errors.New("Again no permission to query engine task result")
+			return "", impact, errors.New("Again no permission to query engine task result")
 		}
 	}
 	if res.StatusCode() != 200 {
 		logger.Errorf("query engine task result failed:%s", res.Error())
-		return "", errors.New(fmt.Sprintf("%v", res.Error()))
+		return "", impact, errors.New(fmt.Sprintf("%v", res.Error()))
 	}
 	switch m.engineType {
 	case "STATIC":
-		resultReport, err := formatSAData(result)
-		return resultReport, err
+		resultReport, impact, err := formatSAData(result)
+		return resultReport, impact, err
 	case "PROVER":
 		resultReport, err := formatSPData(result)
-		return resultReport, err
+		return resultReport, impact, err
 	case "SCA":
-		return result.Data.Result, nil
+		return result.Data.Result, impact, nil
 	case "LINT":
 		resultReport, err := formatCQData(result)
-		return resultReport, err
+		return resultReport, impact, err
 	default:
-		return result.Data.Result, nil
+		return result.Data.Result, impact, nil
 	}
 }
 
@@ -540,11 +544,12 @@ func getTaskResult(engineTaskId, scanToken, organizationId string) (*resty.Respo
 	return res, result, err
 }
 
-func formatSAData(result TaskResultRes) (string, error) {
+func formatSAData(result TaskResultRes) (string, Impact, error) {
+	var impact Impact
 	var resultData SecurityAnalyzerResponse
 	if err := json.Unmarshal([]byte(result.Data.Result), &resultData); err != nil {
 		log.Println("json unmarshal is failed")
-		return "", err
+		return "", impact, err
 	}
 	var files []AffectedFile
 	for _, analyzerResult := range resultData.Results {
@@ -557,6 +562,11 @@ func formatSAData(result TaskResultRes) (string, error) {
 	for _, p := range files {
 		groups[p.Filepath] = append(groups[p.Filepath], p)
 	}
+	var critical int
+	var low int
+	var high int
+	var medium int
+	var informational int
 	for _, analyzerResult := range resultData.Results {
 		for _, file := range analyzerResult.AffectedFiles {
 			_, ok := groups[file.Filepath]
@@ -577,14 +587,30 @@ func formatSAData(result TaskResultRes) (string, error) {
 				engine.LineEnd = file.LineEnd
 				resultMapData.Mwe = append(resultMapData.Mwe, engine)
 				resultMap[file.Filepath] = resultMapData
+				if engine.Severity == "Critical" {
+					critical = critical + 1
+				} else if engine.Severity == "High" {
+					high = high + 1
+				} else if engine.Severity == "Medium" {
+					medium = medium + 1
+				} else if engine.Severity == "LOW" {
+					low = low + 1
+				} else {
+					informational = informational + 1
+				}
 			}
 		}
 	}
+	impact.Critical = critical
+	impact.Informational = informational
+	impact.High = high
+	impact.Low = low
+	impact.Medium = medium
 	jsonData, err := json.Marshal(&resultMap)
 	if err != nil {
 		logger.Errorf("json marshal is failed:%s", err)
 	}
-	return string(jsonData), nil
+	return string(jsonData), impact, nil
 }
 
 type TaskResultRes struct {
