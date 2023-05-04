@@ -81,6 +81,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			methodsPropertiesReportRaw.Tool = methodsPropertiesReport.Tool
 			methodsPropertiesReportRaw.Name = methodsPropertiesReport.Name
 			methodsPropertiesReportRaw.Result = methodsPropertiesReport.Result
+			methodsPropertiesReportRaw.Total = methodsPropertiesReport.Total
 			var contractCheckResultDetailsList []model.ContractCheckResultDetails[json.RawMessage]
 			for _, report := range methodsPropertiesReport.Context {
 				var contractCheckResultDetails model.ContractCheckResultDetails[json.RawMessage]
@@ -106,6 +107,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			styleGuideValidationsReportRaw.Tool = styleGuideValidationsReport.Tool
 			styleGuideValidationsReportRaw.Name = styleGuideValidationsReport.Name
 			styleGuideValidationsReportRaw.Result = styleGuideValidationsReport.Result
+			styleGuideValidationsReportRaw.Total = styleGuideValidationsReport.Total
 			var contractCheckResultDetailsList []model.ContractCheckResultDetails[json.RawMessage]
 			for _, report := range styleGuideValidationsReport.Context {
 				var contractCheckResultDetails model.ContractCheckResultDetails[json.RawMessage]
@@ -131,6 +133,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			securityAnalysisReportRaw.Tool = securityAnalysisReport.Tool
 			securityAnalysisReportRaw.Name = securityAnalysisReport.Name
 			securityAnalysisReportRaw.Result = securityAnalysisReport.Result
+			securityAnalysisReportRaw.Total = securityAnalysisReport.Total
 			var contractCheckResultDetailsList []model.ContractCheckResultDetails[json.RawMessage]
 			for _, report := range securityAnalysisReport.Context {
 				var contractCheckResultDetails model.ContractCheckResultDetails[json.RawMessage]
@@ -156,6 +159,7 @@ func (a *CheckAggregationAction) Hook() (*model.ActionResult, error) {
 			eslintCheckReportReportRaw.Tool = eslintCheckReportReport.Tool
 			eslintCheckReportReportRaw.Name = eslintCheckReportReport.Name
 			eslintCheckReportReportRaw.Result = eslintCheckReportReport.Result
+			eslintCheckReportReportRaw.Total = eslintCheckReportReport.Total
 			var eslintCheckResultDetailsList []model.ContractCheckResultDetails[json.RawMessage]
 			for _, report := range eslintCheckReportReport.Context {
 				var contractCheckResultDetails model.ContractCheckResultDetails[json.RawMessage]
