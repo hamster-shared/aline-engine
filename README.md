@@ -9,6 +9,30 @@
 
 </div>
 
+This project is a workflow engine similar to GitHub Actions, designed for automating the deployment, testing, verification, monitoring, and other functionalities of on-chain contracts.
+
+The engine is divided into worker nodes and master nodes, using gRPC for communication.
+
+## Worker Nodes
+
+```go
+func NewWorkerEngine(masterAddress string) (Engine, error) {}
+```
+
+## Master Nodes
+
+```go
+func NewMasterEngine(listenPort int) (Engine, error) {}
+```
+
+## Usage Example
+
+This project primarily serves the [hamster-develop](https://github.com/hamster-shared/hamster-develop) project. You can refer to the usage in that project for more information.
+
+## Documentation
+
+[Documentation](https://pkg.go.dev/github.com/hamster-shared/aline-engine)
+
 ## About Hamster
 
 Hamster is aiming to build the one-stop infrastructure developer toolkits for Web3.0. It defines itself as a development, operation and maintenance DevOps service platform, providing a set of development tools as well as O&M tools, empowering projects in Web3.0 to improve their coding and delivery speed, quality and efficiency, as well as product reliability & safety.
