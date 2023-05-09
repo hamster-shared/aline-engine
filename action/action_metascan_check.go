@@ -229,7 +229,8 @@ func (m *MetaScanCheckAction) metaScanCreateProject() (CreateProjectRes, error) 
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
+		logger.Info(res.StatusCode())
+		logger.Errorf("create project failed:%s", res.Error())
 		return result, errors.New(fmt.Sprintf("%v", res.Error()))
 	}
 	return result, nil
@@ -290,7 +291,8 @@ func (m *MetaScanCheckAction) metaScanStartScanTask(projectId string) (StartTask
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
+		logger.Info(res.StatusCode())
+		logger.Errorf("start scan task failed:%s", res.Error())
 		return result, errors.New(fmt.Sprintf("%v", res.Error()))
 	}
 	return result, nil
