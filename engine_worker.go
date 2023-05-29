@@ -110,7 +110,7 @@ func (e *workerEngine) handleDoneJob() {
 			statusChan := e.executeClient.GetStatusChangeChan()
 			jobResultStatus := <-statusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
-			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status)
+			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status.ToString())
 			if e.address != "127.0.0.1" {
 				// 回传日志
 				logMsg, _ := e.getLogAndJobDetailMessage(jobResultStatus.JobName, jobResultStatus.JobId)
@@ -119,7 +119,7 @@ func (e *workerEngine) handleDoneJob() {
 				// 回传 report
 				reports, err := jober.GetJobCheckFilesData(jobResultStatus.JobName, strconv.Itoa(jobResultStatus.JobId))
 				if err != nil {
-					logger.Errorf("get job %s-%d report error: %s", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
+					logger.Warnf("get job %s-%d report error: %s, this may not be needed", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
 				}
 				for _, report := range reports {
 					e.rpcClient.SendMsgChan <- &api.AlineMessage{
@@ -133,7 +133,7 @@ func (e *workerEngine) handleDoneJob() {
 				// 回传构建物
 				artifactorys, err := jober.GetJobArtifactoryFilesData(jobResultStatus.JobName, strconv.Itoa(jobResultStatus.JobId))
 				if err != nil {
-					logger.Errorf("get job %s-%d artifactory error: %s", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
+					logger.Warnf("get job %s-%d artifactory error: %s, this may not be needed", jobResultStatus.JobName, jobResultStatus.JobId, err.Error())
 				}
 				for _, artifactory := range artifactorys {
 					e.rpcClient.SendMsgChan <- &api.AlineMessage{
