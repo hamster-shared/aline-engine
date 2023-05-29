@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -110,10 +111,13 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 		}
 		checkResult += askResult
 	}
+	log.Println(checkResult)
+	log.Println(err == nil)
 	if checkResult == "" && err != nil {
+		log.Println("--------------------")
 		return nil, err
 	}
-
+	log.Println("===========================")
 	id, _ := strconv.Atoi(jobId)
 
 	result := &model.ActionResult{
