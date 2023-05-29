@@ -103,19 +103,22 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 	files := utils.GetSuffixFiles(path.Join(workdir, a.dir), a.suffix, tmpPaths)
 
 	var checkResult string
-	var err error
+	var errData error
 	for _, f := range files {
 		askResult, err := a.askOpenAiChat(f)
+		log.Println(err)
 		if err != nil {
+			log.Println("*********************")
+			errData = err
 			break
 		}
 		checkResult += askResult
 	}
 	log.Println(checkResult)
-	log.Println(err == nil)
-	if checkResult == "" && err != nil {
+	log.Println(errData == nil)
+	if checkResult == "" && errData != nil {
 		log.Println("--------------------")
-		return nil, err
+		return nil, errData
 	}
 	log.Println("===========================")
 	id, _ := strconv.Atoi(jobId)
