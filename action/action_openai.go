@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
 	"io"
@@ -101,9 +102,16 @@ func (a *OpenaiAction) Hook() (*model.ActionResult, error) {
 	files := utils.GetSuffixFiles(path.Join(workdir, a.dir), a.suffix, tmpPaths)
 
 	var checkResult string
+	var err error
 	for _, f := range files {
-		askResult := a.askOpenAiChat(f)
+		askResult, err := a.askOpenAiChat(f)
+		if err != nil {
+			break
+		}
 		checkResult += askResult
+	}
+	if checkResult == "" && err != nil {
+		return nil, err
 	}
 
 	id, _ := strconv.Atoi(jobId)
@@ -179,7 +187,7 @@ func (a *OpenaiAction) askOpenAi(file string) string {
 	return ""
 }
 
-func (a *OpenaiAction) askOpenAiChat(file string) string {
+func (a *OpenaiAction) askOpenAiChat(file string) (string, error) {
 	content, err := os.ReadFile(file)
 
 	prompt := fmt.Sprintf("%s\n### Security risk with above contract", content)
@@ -200,7 +208,7 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 	request, err := http.NewRequest("POST", url, bodyReader)
 	if err != nil {
 		logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
-		return ""
+		return "", err
 	}
 	request.Header.Set("Connection", "Keep-Alive")
 	request.Header.Set("Content-Type", "application/json")
@@ -212,7 +220,7 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 	if err != nil {
 		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
 		a.output.WriteLine(fmt.Sprintf("http.Do failed,[err=%s][url=%s]\n", err, url))
-		return ""
+		return "", err
 	}
 
 	b, err := io.ReadAll(resp.Body)
@@ -232,7 +240,7 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 	}(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return ""
+		return "", errors.New("response code is not 200")
 	}
 
 	var apResponse OpenAiChatResponseBody
@@ -243,9 +251,9 @@ func (a *OpenaiAction) askOpenAiChat(file string) string {
 		for _, choices := range apResponse.Choices {
 			content += choices.Message.Content + "\n"
 		}
-		return content
+		return content, nil
 	}
-	return ""
+	return "", nil
 }
 
 type OpenAiChatResponseBody struct {
