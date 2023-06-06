@@ -111,6 +111,9 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 		create.Close()
 	}
 	a.path = destDir
+	logger.Debugf("********")
+	logger.Debugf(a.path)
+	logger.Debugf("********")
 	id, err := strconv.Atoi(jobId)
 	if err != nil {
 		return nil, err
@@ -129,8 +132,6 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 }
 
 func (a *SolHintAction) Post() error {
-	logger.Debugf("********")
-	logger.Debugf(a.path)
 	open, err := os.Open(a.path)
 	if err != nil {
 		return err
