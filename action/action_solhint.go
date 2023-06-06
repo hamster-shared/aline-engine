@@ -92,7 +92,7 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 		logger.Debugf("-------------")
 		logger.Debugf(path)
 		logger.Debugf("-------------")
-		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
+		//_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
 		logger.Debugf("&&&&&&&&&&&&&7")
 		index := strings.Index(path, path2.Join(workdir, a.path))
 		substr := path[index+len(path2.Join(workdir, a.path)):]
