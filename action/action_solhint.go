@@ -94,9 +94,11 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 		logger.Debugf("-------------")
 		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
 		logger.Debugf("&&&&&&&&&&&&&7")
-		logger.Debugf(path2.Join(workdir, a.path))
+		index := strings.Index(path, path2.Join(workdir, a.path))
+		substr := path[index+len(path2.Join(workdir, a.path)):]
+		logger.Debugf(substr)
 		logger.Debugf("-------------")
-		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
+		dest := path2.Join(destDir, substr+consts.SuffixType)
 		command := consts.SolHintCheck + path
 		fields := strings.Fields(command)
 		out, err := a.ExecuteCommand(fields, workdir)
