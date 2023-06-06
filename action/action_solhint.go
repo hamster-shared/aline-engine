@@ -181,13 +181,12 @@ func (a *SolHintAction) Post() error {
 		for _, s := range a.filePath {
 			if strings.Contains(s, name) {
 				index := strings.Index(s, a.basePath+"/")
-				name = s[index+len(a.basePath+"/"):]
-				break
+				if index != -1 {
+					name = s[index+len(a.basePath+"/"):]
+					break
+				}
 			}
 		}
-		logger.Debugf("*****************")
-		logger.Debugf(name)
-		logger.Debugf("*****************")
 		details := model.NewContractCheckResultDetails(name, len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
 		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
