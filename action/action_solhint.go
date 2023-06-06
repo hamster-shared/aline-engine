@@ -22,9 +22,11 @@ import (
 
 // SolHintAction SolHint 合约检查
 type SolHintAction struct {
-	path   string
-	ctx    context.Context
-	output *output.Output
+	path     string
+	ctx      context.Context
+	output   *output.Output
+	filePath []string
+	basePath string
 }
 
 func NewSolHintAction(step model.Step, ctx context.Context, output *output.Output) *SolHintAction {
@@ -88,17 +90,11 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 			return nil, err
 		}
 	}
+	a.basePath = path2.Join(workdir, a.path)
+	var filePath []string
 	for _, path := range absPathList {
-		logger.Debugf("-------------")
-		logger.Debugf(path)
-		logger.Debugf("-------------")
-		//_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
-		logger.Debugf("&&&&&&&&&&&&&7")
-		index := strings.Index(path, path2.Join(workdir, a.path))
-		substr := path[index+len(path2.Join(workdir, a.path)):]
-		logger.Debugf(substr)
-		logger.Debugf("-------------")
-		dest := path2.Join(destDir, substr+consts.SuffixType)
+		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
+		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
 		command := consts.SolHintCheck + path
 		fields := strings.Fields(command)
 		out, err := a.ExecuteCommand(fields, workdir)
@@ -113,12 +109,11 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 		if err != nil {
 			return nil, err
 		}
+		filePath = append(filePath, path)
 		create.Close()
 	}
+	a.filePath = filePath
 	a.path = destDir
-	logger.Debugf("********")
-	logger.Debugf(a.path)
-	logger.Debugf("********")
 	id, err := strconv.Atoi(jobId)
 	if err != nil {
 		return nil, err
@@ -182,8 +177,18 @@ func (a *SolHintAction) Post() error {
 				successFlag = false
 			}
 		}
-
-		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		name := strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1)
+		for _, s := range a.filePath {
+			if strings.Contains(s, name) {
+				index := strings.Index(s, a.basePath+"/")
+				name = s[index+len(a.basePath+"/"):]
+				break
+			}
+		}
+		logger.Debugf("*****************")
+		logger.Debugf(name)
+		logger.Debugf("*****************")
+		details := model.NewContractCheckResultDetails(name, len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
 		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
