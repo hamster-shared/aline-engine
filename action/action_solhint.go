@@ -132,8 +132,6 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 }
 
 func (a *SolHintAction) Post() error {
-	logger.Debugf("$$$$$$$$$$$$$$$$$$")
-	logger.Debugf(a.path)
 	open, err := os.Open(a.path)
 	if err != nil {
 		return err
