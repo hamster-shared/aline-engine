@@ -168,8 +168,9 @@ func (m *MetaScanCheckAction) metaScanGetProjects() (MetaProjectRes, error) {
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("get project list failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Info(res.StatusCode())
+		logger.Errorf("get project list failed:%s", result.Message)
+		return result, errors.New(fmt.Sprintf("get project list failed:%s,error code is %d", result.Message, res.StatusCode()))
 	}
 	return result, nil
 }
@@ -193,7 +194,8 @@ type MetaScanProject struct {
 }
 
 type MetaProjectRes struct {
-	Data MetaProjectsData `json:"data"`
+	Data    MetaProjectsData `json:"data"`
+	Message string           `json:"message"`
 }
 
 type MetaProjectsData struct {
@@ -230,8 +232,8 @@ func (m *MetaScanCheckAction) metaScanCreateProject() (CreateProjectRes, error) 
 	}
 	if res.StatusCode() != 200 {
 		logger.Info(res.StatusCode())
-		logger.Errorf("create project failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Errorf("create project failed:%s", result.Message)
+		return result, errors.New(fmt.Sprintf("create project failed:%s,error code is %d", result.Message, res.StatusCode()))
 	}
 	return result, nil
 }
@@ -292,8 +294,8 @@ func (m *MetaScanCheckAction) metaScanStartScanTask(projectId string) (StartTask
 	}
 	if res.StatusCode() != 200 {
 		logger.Info(res.StatusCode())
-		logger.Errorf("start scan task failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Errorf("start scan task failed:%s", result.Message)
+		return result, errors.New(fmt.Sprintf("start scan task failed:%s,error code is %d", result.Message, res.StatusCode()))
 	}
 	return result, nil
 }
@@ -346,7 +348,8 @@ type Repo struct {
 	CommitHash string `json:"commit_hash"`
 }
 type StartTaskRes struct {
-	Data TaskData `json:"data"`
+	Data    TaskData `json:"data"`
+	Message string   `json:"message"`
 }
 
 type TaskData struct {
@@ -400,8 +403,9 @@ func (m *MetaScanCheckAction) metaScanQueryTaskStatus(taskId string) (TaskStatus
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("query task status failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Info(res.StatusCode())
+		logger.Errorf("query task status failed:%s", result.Message)
+		return result, errors.New(fmt.Sprintf("query task status failed:%s, error code is %d", result.Message, res.StatusCode()))
 	}
 	return result, nil
 }
@@ -416,7 +420,8 @@ func queryTaskStatus(taskId, token, organizationId string) (*resty.Response, Tas
 }
 
 type TaskStatusRes struct {
-	Data TaskStatus `json:"data"`
+	Data    TaskStatus `json:"data"`
+	Message string     `json:"message"`
 }
 
 type TaskStatus struct {
@@ -450,8 +455,9 @@ func (m *MetaScanCheckAction) metaScanGetEngineTaskSummary(engineTaskId string) 
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("query engine task summary failed:%s", res.Error())
-		return result, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Info(res.StatusCode())
+		logger.Errorf("query engine task summary failed:%s", result.Message)
+		return result, errors.New(fmt.Sprintf("query engine task summary failed:%s,error code is %d", result.Message, res.StatusCode()))
 	}
 	return result, nil
 }
@@ -467,7 +473,8 @@ func getEngineTaskSummary(engineTaskId, token, organizationId string) (*resty.Re
 }
 
 type SummaryDataRes struct {
-	Data SummaryData `json:"data"`
+	Data    SummaryData `json:"data"`
+	Message string      `json:"message"`
 }
 
 type SummaryData struct {
@@ -517,8 +524,9 @@ func (m *MetaScanCheckAction) metaScanGetTaskResult(engineTaskId string) (string
 		}
 	}
 	if res.StatusCode() != 200 {
-		logger.Errorf("query engine task result failed:%s", res.Error())
-		return "", impact, errors.New(fmt.Sprintf("%v", res.Error()))
+		logger.Info(res.StatusCode())
+		logger.Errorf("query engine task result failed:%s", result.Message)
+		return "", impact, errors.New(fmt.Sprintf("query engine task result failed:%s,error code is %d", result.Message, res.StatusCode()))
 	}
 	switch m.engineType {
 	case "STATIC":
@@ -617,7 +625,8 @@ func formatSAData(result TaskResultRes) (string, Impact, error) {
 }
 
 type TaskResultRes struct {
-	Data TaskResult `json:"data"`
+	Data    TaskResult `json:"data"`
+	Message string     `json:"message"`
 }
 
 type TaskResult struct {
