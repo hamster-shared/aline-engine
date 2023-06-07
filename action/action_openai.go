@@ -196,39 +196,7 @@ func (a *OpenaiAction) askOpenAi(file string) string {
 
 func (a *OpenaiAction) askOpenAiChat(file string) (string, error) {
 	content, err := os.ReadFile(file)
-
 	prompt := fmt.Sprintf("%s\n### Security risk with above contract", content)
-
-	//apiReq := OpenAiChatRequestBody{
-	//	Model: "gpt-3.5-turbo",
-	//	Messages: []OpenAiChatMessage{
-	//		{
-	//			Role:    "user",
-	//			Content: prompt,
-	//		},
-	//	},
-	//}
-	//json_data, err := json.Marshal(apiReq)
-	//bodyReader := bytes.NewReader(json_data)
-	//url := "https://api.openai.com/v1/chat/completions"
-	//
-	//request, err := http.NewRequest("POST", url, bodyReader)
-	//if err != nil {
-	//	logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
-	//	return "", err
-	//}
-	//request.Header.Set("Connection", "Keep-Alive")
-	//request.Header.Set("Content-Type", "application/json")
-	//openAiAPIKEY := os.Getenv("OPENAI_API_KEY")
-	//request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
-	//var resp *http.Response
-	//resp, err = http.DefaultClient.Do(request)
-	//
-	//if err != nil {
-	//	logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
-	//	a.output.WriteLine(fmt.Sprintf("http.Do failed,[err=%s][url=%s]\n", err, url))
-	//	return "", err
-	//}
 	req := openai.ChatCompletionRequest{
 		Model: openai.GPT3Dot5Turbo,
 		Messages: []openai.ChatCompletionMessage{
@@ -241,40 +209,10 @@ func (a *OpenaiAction) askOpenAiChat(file string) (string, error) {
 	client := getOpenaiClient()
 	response, err := client.CreateChatCompletion(context.Background(), req)
 	if err != nil {
-		logger.Errorf("openai request failed: %s", err)
-		a.output.WriteLine(fmt.Sprintf("openai request failed: %s", err))
+		fmt.Printf("openai request failed: %v\n", err)
+		a.output.WriteLine(fmt.Sprintf("openai request failed: %v\n", err))
 		return "", err
 	}
-	//b, err := io.ReadAll(resp.Body)
-	//logger.Info("openai response code:", resp.StatusCode)
-	//logger.Info("openai response content: ", string(b))
-	//
-	//if a.output != nil {
-	//	a.output.WriteLine(fmt.Sprintf("openai response code: %d", resp.StatusCode))
-	//	a.output.WriteLine(fmt.Sprintf("openai response content:  %s", string(b)))
-	//}
-
-	//defer func(Body io.ReadCloser) {
-	//	err := Body.Close()
-	//	if err != nil {
-	//
-	//	}
-	//}(resp.Body)
-
-	//if resp.StatusCode != 200 {
-	//	return "", errors.New("response code is not 200")
-	//}
-
-	//var apResponse OpenAiChatResponseBody
-	//_ = json.Unmarshal(b, &apResponse)
-
-	//if len(apResponse.Choices) > 0 {
-	//	content := path.Base(file) + " \n "
-	//	for _, choices := range apResponse.Choices {
-	//		content += choices.Message.Content + "\n"
-	//	}
-	//	return content, nil
-	//}
 	if len(response.Choices) > 0 {
 		content := path.Base(file) + " \n "
 		for _, choices := range response.Choices {
@@ -313,8 +251,8 @@ func (a *OpenaiAction) Post() error {
 
 func getOpenaiClient() *openai.Client {
 	apiKey := os.Getenv("AZURE_API_KEY")
-	apiBase := "https://hamster.openai.azure.com/"
-	deploymentName := "hamster"
+	apiBase := os.Getenv("AZURE_API_BASE")
+	deploymentName := os.Getenv("AZURE_DEPLOYMENT_NAME")
 	config := openai.DefaultAzureConfig(apiKey, apiBase)
 	config.AzureModelMapperFunc = func(model string) string {
 		azureModelMapping := map[string]string{
