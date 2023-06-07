@@ -9,6 +9,7 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/ipfs/go-ipfs-api v0.4.0
 	github.com/jinzhu/copier v0.3.5
+	github.com/sashabaranov/go-openai v1.10.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tidwall/gjson v1.14.4

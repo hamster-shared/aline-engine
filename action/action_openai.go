@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
 	"io"
@@ -17,6 +16,7 @@ import (
 	"github.com/hamster-shared/aline-engine/model"
 	"github.com/hamster-shared/aline-engine/output"
 	"github.com/hamster-shared/aline-engine/utils"
+	"github.com/sashabaranov/go-openai"
 )
 
 type OpenAiRequestBody struct {
@@ -199,63 +199,85 @@ func (a *OpenaiAction) askOpenAiChat(file string) (string, error) {
 
 	prompt := fmt.Sprintf("%s\n### Security risk with above contract", content)
 
-	apiReq := OpenAiChatRequestBody{
-		Model: "gpt-3.5-turbo",
-		Messages: []OpenAiChatMessage{
+	//apiReq := OpenAiChatRequestBody{
+	//	Model: "gpt-3.5-turbo",
+	//	Messages: []OpenAiChatMessage{
+	//		{
+	//			Role:    "user",
+	//			Content: prompt,
+	//		},
+	//	},
+	//}
+	//json_data, err := json.Marshal(apiReq)
+	//bodyReader := bytes.NewReader(json_data)
+	//url := "https://api.openai.com/v1/chat/completions"
+	//
+	//request, err := http.NewRequest("POST", url, bodyReader)
+	//if err != nil {
+	//	logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
+	//	return "", err
+	//}
+	//request.Header.Set("Connection", "Keep-Alive")
+	//request.Header.Set("Content-Type", "application/json")
+	//openAiAPIKEY := os.Getenv("OPENAI_API_KEY")
+	//request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
+	//var resp *http.Response
+	//resp, err = http.DefaultClient.Do(request)
+	//
+	//if err != nil {
+	//	logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
+	//	a.output.WriteLine(fmt.Sprintf("http.Do failed,[err=%s][url=%s]\n", err, url))
+	//	return "", err
+	//}
+	req := openai.ChatCompletionRequest{
+		Model: openai.GPT3Dot5Turbo,
+		Messages: []openai.ChatCompletionMessage{
 			{
-				Role:    "user",
+				Role:    openai.ChatMessageRoleSystem,
 				Content: prompt,
 			},
 		},
 	}
-	json_data, err := json.Marshal(apiReq)
-	bodyReader := bytes.NewReader(json_data)
-	url := "https://api.openai.com/v1/chat/completions"
-
-	request, err := http.NewRequest("POST", url, bodyReader)
+	client := getOpenaiClient()
+	response, err := client.CreateChatCompletion(context.Background(), req)
 	if err != nil {
-		logger.Errorf("http.NewRequest,[err=%s][url=%s]", err, url)
+		logger.Errorf("openai request failed: %s", err)
+		a.output.WriteLine(fmt.Sprintf("openai request failed: %s", err))
 		return "", err
 	}
-	request.Header.Set("Connection", "Keep-Alive")
-	request.Header.Set("Content-Type", "application/json")
-	openAiAPIKEY := os.Getenv("OPENAI_API_KEY")
-	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", openAiAPIKEY))
-	var resp *http.Response
-	resp, err = http.DefaultClient.Do(request)
+	//b, err := io.ReadAll(resp.Body)
+	//logger.Info("openai response code:", resp.StatusCode)
+	//logger.Info("openai response content: ", string(b))
+	//
+	//if a.output != nil {
+	//	a.output.WriteLine(fmt.Sprintf("openai response code: %d", resp.StatusCode))
+	//	a.output.WriteLine(fmt.Sprintf("openai response content:  %s", string(b)))
+	//}
 
-	if err != nil {
-		logger.Errorf("http.Do failed,[err=%s][url=%s]\n", err, url)
-		a.output.WriteLine(fmt.Sprintf("http.Do failed,[err=%s][url=%s]\n", err, url))
-		return "", err
-	}
+	//defer func(Body io.ReadCloser) {
+	//	err := Body.Close()
+	//	if err != nil {
+	//
+	//	}
+	//}(resp.Body)
 
-	b, err := io.ReadAll(resp.Body)
-	logger.Info("openai response code:", resp.StatusCode)
-	logger.Info("openai response content: ", string(b))
+	//if resp.StatusCode != 200 {
+	//	return "", errors.New("response code is not 200")
+	//}
 
-	if a.output != nil {
-		a.output.WriteLine(fmt.Sprintf("openai response code: %d", resp.StatusCode))
-		a.output.WriteLine(fmt.Sprintf("openai response content:  %s", string(b)))
-	}
+	//var apResponse OpenAiChatResponseBody
+	//_ = json.Unmarshal(b, &apResponse)
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != 200 {
-		return "", errors.New("response code is not 200")
-	}
-
-	var apResponse OpenAiChatResponseBody
-	_ = json.Unmarshal(b, &apResponse)
-
-	if len(apResponse.Choices) > 0 {
+	//if len(apResponse.Choices) > 0 {
+	//	content := path.Base(file) + " \n "
+	//	for _, choices := range apResponse.Choices {
+	//		content += choices.Message.Content + "\n"
+	//	}
+	//	return content, nil
+	//}
+	if len(response.Choices) > 0 {
 		content := path.Base(file) + " \n "
-		for _, choices := range apResponse.Choices {
+		for _, choices := range response.Choices {
 			content += choices.Message.Content + "\n"
 		}
 		return content, nil
@@ -287,4 +309,18 @@ type OpenAiChatResponseBody struct {
 func (a *OpenaiAction) Post() error {
 
 	return nil
+}
+
+func getOpenaiClient() *openai.Client {
+	apiKey := os.Getenv("AZURE_API_KEY")
+	apiBase := "https://hamster.openai.azure.com/"
+	deploymentName := "hamster"
+	config := openai.DefaultAzureConfig(apiKey, apiBase)
+	config.AzureModelMapperFunc = func(model string) string {
+		azureModelMapping := map[string]string{
+			"gpt-3.5-turbo": deploymentName,
+		}
+		return azureModelMapping[model]
+	}
+	return openai.NewClientWithConfig(config)
 }
