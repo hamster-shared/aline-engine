@@ -90,7 +90,7 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 			return nil, err
 		}
 	}
-	a.basePath = path2.Join(workdir, a.path)
+	a.basePath = workdir
 	var filePath []string
 	for _, path := range absPathList {
 		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
