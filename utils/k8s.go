@@ -171,7 +171,8 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
 			Annotations: map[string]string{
-				"kubernetes.io/ingress.class": "nginx",
+				"kubernetes.io/ingress.class":                    "nginx",
+				"nginx.ingress.kubernetes.io/websocket-services": serviceName,
 			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
