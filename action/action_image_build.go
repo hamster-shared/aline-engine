@@ -40,7 +40,7 @@ func (i *ImageBuildAction) Hook() (*model.ActionResult, error) {
 	if !ok {
 		return nil, errors.New("get workdir error")
 	}
-	buildCommands := []string{"docker", "buildx", "build", "-t", i.imageName, "."}
+	buildCommands := []string{"docker", "buildx", "build", "-t", i.imageName, "--platform=linux/amd64", "."}
 	_, err := i.ExecuteCommand(buildCommands, workdir)
 	if err != nil {
 		return nil, errors.New("docker build image failed")
