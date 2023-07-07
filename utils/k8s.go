@@ -240,6 +240,7 @@ func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, ga
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
 			Annotations: map[string]string{
+				"cert-manager.io/cluster-issuer":                 "letsencrypt-prod",
 				"kubernetes.io/ingress.class":                    "nginx",
 				"nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
 				"nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
