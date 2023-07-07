@@ -244,6 +244,7 @@ func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, ga
 				"kubernetes.io/ingress.class":                    "nginx",
 				"nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
 				"nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
+				"nginx.ingress.kubernetes.io/websocket-services": serviceName,
 			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
