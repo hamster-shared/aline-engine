@@ -167,12 +167,15 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*networkingv1beta1.Ingress, error) {
 	var in *networkingv1beta1.Ingress
 	pathType := networkingv1beta1.PathTypePrefix
+	var tlsHost []string
+	tlsHost = append(tlsHost, gateway)
 	ingress := &networkingv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
 			Annotations: map[string]string{
 				"kubernetes.io/ingress.class":                    "nginx",
-				"nginx.ingress.kubernetes.io/websocket-services": serviceName,
+				"nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
+				"nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
 			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
@@ -197,6 +200,12 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 							},
 						},
 					},
+				},
+			},
+			TLS: []networkingv1beta1.IngressTLS{
+				{
+					Hosts:      tlsHost,
+					SecretName: serviceName,
 				},
 			},
 		},
