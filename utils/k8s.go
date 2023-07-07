@@ -235,7 +235,7 @@ func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, ga
 	var in *networkingv1beta1.Ingress
 	pathType := networkingv1beta1.PathTypePrefix
 	var tlsHost []string
-	tlsHost = append(tlsHost, gateway)
+	tlsHost = append(tlsHost, fmt.Sprintf("%s.%s", serviceName, gateway))
 	ingress := &networkingv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),

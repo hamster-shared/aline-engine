@@ -51,7 +51,6 @@ func (k *K8sIngressAction) Pre() error {
 }
 
 func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
-	log.Println(k.configHttps)
 	client, err := utils.InitK8sClient()
 	if err != nil {
 		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s client init failed, %s", err.Error()))
