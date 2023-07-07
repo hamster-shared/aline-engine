@@ -173,6 +173,73 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
 			Annotations: map[string]string{
+				"kubernetes.io/ingress.class": "nginx",
+			},
+		},
+		Spec: networkingv1beta1.IngressSpec{
+			Rules: []networkingv1beta1.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.%s", serviceName, gateway),
+					IngressRuleValue: networkingv1beta1.IngressRuleValue{
+						HTTP: &networkingv1beta1.HTTPIngressRuleValue{
+							Paths: []networkingv1beta1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: networkingv1beta1.IngressBackend{
+										Service: &networkingv1beta1.IngressServiceBackend{
+											Name: serviceName,
+											Port: networkingv1beta1.ServiceBackendPort{
+												Number: ports[0].Port,
+											},
+										},
+									},
+									PathType: &pathType,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ingressClient := client.NetworkingV1().Ingresses(namespace)
+	list, err := ingressClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Println("get ingress list failed: ", err.Error())
+		return in, err
+	}
+	ingressExist := false
+	for _, ingressItem := range list.Items {
+		if ingressItem.Name == fmt.Sprintf("%s-ingress", serviceName) {
+			ingressExist = true
+			break
+		}
+	}
+	if !ingressExist {
+		in, err = client.NetworkingV1().Ingresses(namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
+		if err != nil {
+			log.Println("create service failed: ", err.Error())
+			return in, err
+		}
+	} else {
+		in, err = client.NetworkingV1().Ingresses(namespace).Update(context.Background(), ingress, metav1.UpdateOptions{})
+		if err != nil {
+			log.Println("update service failed: ", err.Error())
+			return in, err
+		}
+	}
+	return in, err
+}
+
+func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*networkingv1beta1.Ingress, error) {
+	var in *networkingv1beta1.Ingress
+	pathType := networkingv1beta1.PathTypePrefix
+	var tlsHost []string
+	tlsHost = append(tlsHost, gateway)
+	ingress := &networkingv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-ingress", serviceName),
+			Annotations: map[string]string{
 				"kubernetes.io/ingress.class":                    "nginx",
 				"nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
 				"nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
