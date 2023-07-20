@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/hamster-shared/aline-engine/logger"
 	"log"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ func InitK8sClient() (*kubernetes.Clientset, error) {
 			kubeConfig = ""
 		}
 	}
+	logger.Debugf("kube config path is: %s", kubeConfig)
 	// use the current context in kubeConfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
