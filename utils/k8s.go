@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,6 +23,12 @@ func InitK8sClient() (*kubernetes.Clientset, error) {
 		kubeConfig = filepath.Join(home, ".kube", "config")
 	} else {
 		kubeConfig = ""
+	}
+	_, err := os.Stat(kubeConfig)
+	if err != nil {
+		if os.IsNotExist(err) {
+			kubeConfig = ""
+		}
 	}
 	// use the current context in kubeConfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
