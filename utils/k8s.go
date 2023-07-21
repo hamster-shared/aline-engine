@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/hamster-shared/aline-engine/consts"
 	"github.com/hamster-shared/aline-engine/logger"
 	"log"
 	"os"
@@ -209,6 +210,12 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 					},
 				},
 			},
+			TLS: []networkingv1beta1.IngressTLS{
+				{
+					Hosts:      tlsHost,
+					SecretName: consts.SecretName,
+				},
+			},
 		},
 	}
 	ingressClient := client.NetworkingV1().Ingresses(namespace)
@@ -282,7 +289,7 @@ func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, ga
 			TLS: []networkingv1beta1.IngressTLS{
 				{
 					Hosts:      tlsHost,
-					SecretName: serviceName,
+					SecretName: consts.SecretName,
 				},
 			},
 		},

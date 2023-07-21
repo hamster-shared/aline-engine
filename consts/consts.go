@@ -70,3 +70,5 @@ var InkUrlMap = map[string]string{
 const (
 	STEP_TIMEOUT_MINUTE = 30 // 单位为分钟
 )
+
+const SecretName = "hamster-tls"
