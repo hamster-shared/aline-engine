@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	aline_context "github.com/hamster-shared/aline-engine/ctx"
 	"os"
 	"path"
 	"runtime"
@@ -88,6 +89,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	}
 
 	engineContext["parameter"] = job.Parameter
+	engineContext["userId"] = job.UserId
 
 	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), "stack", engineContext))
 
@@ -204,6 +206,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
 			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			actionContext := aline_context.NewActionContext(step, ctx, jobWrapper.Output)
 			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
 			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
 			e.stepTimerMap.Store(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id), newStepTimer())
@@ -251,6 +254,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {
 				ah = action.NewOpenaiAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "icp-deploy" {
+				ah = action.NewICPDeployAction(actionContext)
 			} else if strings.Contains(step.Uses, "/") {
 				ah = action.NewRemoteAction(step, ctx)
 			}
