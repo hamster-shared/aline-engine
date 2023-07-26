@@ -19,10 +19,7 @@ import (
 
 // ICPDeployAction Upload files/directories to ipfs
 type ICPDeployAction struct {
-	path    string
-	api     string
 	artiUrl string
-	baseDir string
 	dfxJson string
 	userId  uint
 	ac      ctx.ActionContext
@@ -32,10 +29,7 @@ func NewICPDeployAction(ac ctx.ActionContext) *ICPDeployAction {
 	userId := ac.GetStackValue("userId").(uint)
 
 	return &ICPDeployAction{
-		path:    ac.GetStepWith("path"),
 		artiUrl: ac.GetStepWith("arti_url"),
-		api:     ac.GetStepWith("api"),
-		baseDir: ac.GetStepWith("base_dir"),
 		dfxJson: ac.GetStepWith("dfx_json"),
 		userId:  userId,
 		ac:      ac,
@@ -45,7 +39,6 @@ func NewICPDeployAction(ac ctx.ActionContext) *ICPDeployAction {
 func (a *ICPDeployAction) Pre() error {
 	params := a.ac.GetParameters()
 	a.artiUrl = utils.ReplaceWithParam(a.artiUrl, params)
-	a.baseDir = utils.ReplaceWithParam(a.baseDir, params)
 	a.dfxJson = utils.ReplaceWithParam(a.dfxJson, params)
 	return nil
 }
@@ -174,13 +167,8 @@ func (a *ICPDeployAction) downloadAndUnzip() error {
 		}
 		_ = os.Remove(downloadFile)
 
-		a.path = filepath.Join(workdir)
 	}
 
-	if _, err := os.Stat(a.path); err != nil {
-		a.ac.WriteLine("path or arti_url is empty")
-		return err
-	}
 	return nil
 }
 
