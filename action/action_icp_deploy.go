@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
@@ -76,9 +77,10 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	actionResult := &model.ActionResult{}
 	urls := analyzeURL(string(output))
 
-	for _, link := range urls {
+	for key, value := range urls {
 		actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
-			Url: link,
+			Name: key,
+			Url:  value,
 		})
 	}
 
@@ -172,18 +174,30 @@ func (a *ICPDeployAction) downloadAndUnzip() error {
 	return nil
 }
 
-func analyzeURL(output string) []string {
+func analyzeURL(output string) map[string]string {
 
-	// 定义正则表达式
-	urlPattern := `https?://[^\s]+`
+	// 定义正则表达式来匹配键值对
+	pattern := `([^:\s]+):\s*(https?://[^\s]+)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(output, -1)
 
-	// 编译正则表达式
-	re := regexp.MustCompile(urlPattern)
+	// 创建map来保存键值对
+	keyValuePairs := make(map[string]string)
 
-	// 查找所有匹配的URL
-	urls := re.FindAllString(output, -1)
+	// 处理匹配结果并构建键值对
+	for _, match := range matches {
+		key := strings.TrimSpace(match[1])
+		value := strings.TrimSpace(match[2])
+		keyValuePairs[key] = value
+	}
 
-	return urls
+	// 输出结果
+	fmt.Println("提取的键值对：")
+	for key, value := range keyValuePairs {
+		fmt.Printf("%s: %s\n", key, value)
+	}
+
+	return keyValuePairs
 }
 
 func (a *ICPDeployAction) Post() error {

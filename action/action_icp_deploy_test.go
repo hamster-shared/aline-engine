@@ -12,5 +12,5 @@ func TestAnalyzeURL(t *testing.T) {
 	result := analyzeURL(output)
 
 	assert.Equal(t, 1, len(result), "url length != 1")
-	assert.Equal(t, "http://127.0.0.1:4943/?canisterId=dmalx-m4aaa-aaaaa-qaanq-cai", result[0])
+	assert.Equal(t, "http://127.0.0.1:4943/?canisterId=dmalx-m4aaa-aaaaa-qaanq-cai", result["vuejs"])
 }
