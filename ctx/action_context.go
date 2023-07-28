@@ -34,8 +34,8 @@ func (a *ActionContext) GetWorkdir() string {
 	return a.GetStack()["workdir"].(string)
 }
 
-func (a *ActionContext) GetUserId() uint {
-	return a.GetStack()["userId"].(uint)
+func (a *ActionContext) GetUserId() string {
+	return a.GetStack()["userId"].(string)
 }
 
 func (a *ActionContext) WriteLine(content string) {

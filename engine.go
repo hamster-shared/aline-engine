@@ -15,6 +15,7 @@ import (
 type Engine interface {
 	CreateJob(name string, yaml string) error
 	SaveJobParams(name string, params map[string]string) error
+	SaveJobUserId(name string, userId string) error
 	DeleteJob(name string) error
 	UpdateJob(name, newName, jobYaml string) error
 	GetJob(name string) (*model.Job, error)
@@ -86,6 +87,10 @@ func (e *engine) CreateJob(name string, yaml string) error {
 
 func (e *engine) SaveJobParams(name string, params map[string]string) error {
 	return jober.SaveJobParams(name, params)
+}
+
+func (e *engine) SaveJobUserId(name string, userId string) error {
+	return jober.SaveJobUserId(name, userId)
 }
 
 func (e *engine) DeleteJob(name string) error {

@@ -22,12 +22,12 @@ import (
 type ICPDeployAction struct {
 	artiUrl string
 	dfxJson string
-	userId  uint
+	userId  string
 	ac      ctx.ActionContext
 }
 
 func NewICPDeployAction(ac ctx.ActionContext) *ICPDeployAction {
-	userId := ac.GetStackValue("userId").(uint)
+	userId := ac.GetUserId()
 
 	return &ICPDeployAction{
 		artiUrl: ac.GetStepWith("arti_url"),
@@ -47,11 +47,15 @@ func (a *ICPDeployAction) Pre() error {
 func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 
 	workdir := a.ac.GetWorkdir()
+
+	_ = os.RemoveAll(path.Join(workdir, "dist"))
+
 	err2 := a.downloadAndUnzip()
 	if err2 != nil {
 		return nil, err2
 	}
 
+	fmt.Println("userId: ", a.ac.GetUserId())
 	fmt.Println(a.dfxJson)
 
 	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
@@ -65,14 +69,24 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	if icNetwork == "" {
 		icNetwork = "local"
 	}
+	dfxBin := "/usr/local/bin/dfx"
 
-	cmd := exec.Command("/usr/local/bin/dfx", "deploy", "--network", icNetwork)
+	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
+	logger.Info(output)
+
+	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork)
+	cmd.Dir = workdir
+	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("执行CMD命令时发生错误:", err)
+		a.ac.WriteLine(string(output))
 		return nil, err
 	}
+
+	a.ac.WriteLine(string(output))
+	fmt.Println(string(output))
 
 	actionResult := &model.ActionResult{}
 	urls := analyzeURL(string(output))

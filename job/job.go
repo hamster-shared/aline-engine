@@ -27,10 +27,24 @@ func SaveJob(name string, yaml string) error {
 
 func SaveJobParams(name string, params map[string]string) error {
 	job, err := GetJobObject(name)
+
 	if err != nil {
 		return err
 	}
 	job.Parameter = params
+	content, err := yaml.Marshal(job)
+	if err != nil {
+		return err
+	}
+	return SaveJob(job.Name, string(content))
+}
+
+func SaveJobUserId(name string, userId string) error {
+	job, err := GetJobObject(name)
+	job.UserId = userId
+	if err != nil {
+		return err
+	}
 	content, err := yaml.Marshal(job)
 	if err != nil {
 		return err
