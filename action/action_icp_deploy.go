@@ -76,7 +76,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	output, err := cmd.CombinedOutput()
 	logger.Info(output)
 
-	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork)
+	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "50000000000")
 	cmd.Dir = workdir
 	output, err = cmd.CombinedOutput()
 	if err != nil {
