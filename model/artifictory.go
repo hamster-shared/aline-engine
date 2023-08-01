@@ -19,8 +19,9 @@ type Report struct {
 }
 
 type DeployInfo struct {
-	Cid string `json:"cid"`
-	Url string `json:"url"`
+	Name string `json:"name"`
+	Cid  string `json:"cid"`
+	Url  string `json:"url"`
 }
 
 type BuildInfo struct {
