@@ -55,12 +55,9 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		return nil, err2
 	}
 
-	fmt.Println("userId: ", a.ac.GetUserId())
-	fmt.Println(a.dfxJson)
-
 	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
 	if err != nil {
-		fmt.Println("write dfx.json error:", err)
+		logger.Error("write dfx.json error:", err)
 		return nil, err
 	}
 
@@ -70,6 +67,13 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		icNetwork = "local"
 	}
 	dfxBin := "/usr/local/bin/dfx"
+
+	locker, err := utils.Lock()
+	if err != nil {
+		return nil, err
+	}
+
+	defer utils.Unlock(locker)
 
 	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
 	cmd.Dir = workdir
@@ -81,13 +85,13 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	logger.Infof("execute deploy canister command: %s", cmd)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("执行CMD命令时发生错误:", err)
+		logger.Error("执行CMD命令时发生错误:", err)
 		a.ac.WriteLine(string(output))
 		return nil, fmt.Errorf(string(output))
 	}
 
 	a.ac.WriteLine(string(output))
-	fmt.Println(string(output))
+	logger.Info(string(output))
 
 	actionResult := &model.ActionResult{}
 	urls := analyzeURL(string(output))
@@ -204,12 +208,6 @@ func analyzeURL(output string) map[string]string {
 		key := strings.TrimSpace(match[1])
 		value := strings.TrimSpace(match[2])
 		keyValuePairs[key] = value
-	}
-
-	// 输出结果
-	fmt.Println("提取的键值对：")
-	for key, value := range keyValuePairs {
-		fmt.Printf("%s: %s\n", key, value)
 	}
 
 	return keyValuePairs
