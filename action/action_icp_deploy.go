@@ -83,7 +83,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	if err != nil {
 		fmt.Println("执行CMD命令时发生错误:", err)
 		a.ac.WriteLine(string(output))
-		return nil, err
+		return nil, fmt.Errorf(string(output))
 	}
 
 	a.ac.WriteLine(string(output))
