@@ -78,6 +78,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 
 	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "110000000000")
 	cmd.Dir = workdir
+	logger.Infof("execute deploy canister command: %s", cmd)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("执行CMD命令时发生错误:", err)
