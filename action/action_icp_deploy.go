@@ -80,7 +80,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	output, err := cmd.CombinedOutput()
 	logger.Info(output)
 
-	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "110000000000")
+	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "300000000000")
 	cmd.Dir = workdir
 	logger.Infof("execute deploy canister command: %s", cmd)
 	output, err = cmd.CombinedOutput()
