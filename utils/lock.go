@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/werf/lockgate"
 	"github.com/werf/lockgate/pkg/distributed_locker"
@@ -13,7 +12,7 @@ import (
 )
 
 const (
-	ICP_LOCK_KEY = "icp_lock_resource"
+	ICP_LOCK_KEY = "icp-lock"
 	NAMESPACE    = "hamster"
 )
 
@@ -38,8 +37,6 @@ func init() {
 
 func Lock() (*lockgate.LockHandle, error) {
 	// Case 1: simple blocking lock
-	fmt.Println(time.Now().String())
-
 	_, lock, err := locker.Acquire(ICP_LOCK_KEY, lockgate.AcquireOptions{Shared: false, Timeout: 30 * time.Second})
 	if err != nil {
 		logger.Error(os.Stderr, "ERROR: failed to lock myresource: %s\n", err)
