@@ -41,7 +41,7 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 	if !ok {
 		return nil, errors.New("get workdir error")
 	}
-	buildCommands := []string{"aptos", "move", "compile", "--save-metadata", "--named-addresses", a.aptosParam}
+	buildCommands := []string{"/usr/local/bin/aptos", "move", "compile", "--save-metadata", "--named-addresses", a.aptosParam}
 	out, err := a.ExecuteCommand(buildCommands, workdir)
 	if err != nil {
 		return nil, errors.New("docker build image failed")
