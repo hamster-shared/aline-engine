@@ -250,6 +250,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "aptos-check" {
 				ah = action.NewMoveProverAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "aptos-build" {
+				ah = action.NewAptosBuildAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {

@@ -35,11 +35,17 @@ type MetaScanReport struct {
 	Tool           string `json:"tool""`
 }
 
+type BuildSequence struct {
+	SequenceDada []string `json:"sequenceDada,omitempty"`
+	Name         string   `json:"name,omitempty"`
+}
+
 type ActionResult struct {
-	CodeInfo     string
-	Artifactorys []Artifactory    `json:"artifactorys"`
-	Reports      []Report         `json:"reports"`
-	Deploys      []DeployInfo     `json:"deploys"`
-	BuildData    []BuildInfo      `json:"buildData"`
-	MetaScanData []MetaScanReport `json:"metaScanData"`
+	CodeInfo      string           `json:"codeInfo,omitempty"`
+	BuildSequence BuildSequence    `json:"buildSequence,omitempty"`
+	Artifactorys  []Artifactory    `json:"artifactorys" json:"artifactorys,omitempty"`
+	Reports       []Report         `json:"reports" json:"reports,omitempty"`
+	Deploys       []DeployInfo     `json:"deploys" json:"deploys,omitempty"`
+	BuildData     []BuildInfo      `json:"buildData" json:"buildData,omitempty"`
+	MetaScanData  []MetaScanReport `json:"metaScanData" json:"metaScanData,omitempty"`
 }
