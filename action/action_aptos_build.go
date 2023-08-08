@@ -42,6 +42,14 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 		return nil, errors.New("get workdir error")
 	}
 	buildCommands := []string{"/usr/local/bin/aptos", "move", "compile", "--save-metadata", "--named-addresses", a.aptosParam}
+	val, ok := stack["withEnv"]
+	if ok {
+		precommand := val.([]string)
+		shellCommand := make([]string, len(buildCommands))
+		copy(shellCommand, buildCommands)
+		buildCommands = append([]string{}, precommand...)
+		buildCommands = append(buildCommands, shellCommand...)
+	}
 	out, err := a.ExecuteCommand(buildCommands, workdir)
 	if err != nil {
 		return nil, errors.New("docker build image failed")
