@@ -59,14 +59,20 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("exec aptos command failed:%s", err)
 		return nil, errors.New("docker build image failed")
 	}
+	logger.Info("222222222")
 	logger.Infof("aptos exec command result %s", out)
 	handleData, moduleName := a.handleBuildOutData(out)
+	logger.Info("11111111111")
+	logger.Info(handleData)
+	logger.Info(moduleName)
 	sequenceData := model.BuildSequence{
 		SequenceDada: handleData,
 		Name:         moduleName,
 	}
 	actionResult := &model.ActionResult{}
 	actionResult.BuildSequence = sequenceData
+	logger.Info("00000000000")
+	logger.Info(actionResult.BuildSequence)
 	return actionResult, nil
 }
 func (a *AptosBuildAction) Post() error {
