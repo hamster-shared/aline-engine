@@ -50,7 +50,10 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 		buildCommands = append([]string{}, precommand...)
 		buildCommands = append(buildCommands, shellCommand...)
 	}
+	logger.Info("$$$$$$$$$$$$$$$$$$$$$$$$$")
+	logger.Info("start exec qptos command")
 	out, err := a.ExecuteCommand(buildCommands, workdir)
+	logger.Info("&&&&&&&&&&&&&&&&&&")
 	logger.Debugf("aptos exec command success")
 	if err != nil {
 		logger.Errorf("exec aptos command failed:%s", err)
@@ -76,11 +79,15 @@ func (a *AptosBuildAction) ExecuteCommand(commands []string, workdir string) (st
 	logger.Debugf("execute docker command: %s", strings.Join(commands, " "))
 	a.output.WriteCommandLine(strings.Join(commands, " "))
 	out, err := c.CombinedOutput()
+	logger.Info("-----------------")
 	fmt.Println(string(out))
+	logger.Info("-----------------")
 	a.output.WriteCommandLine(string(out))
 	if err != nil {
+		logger.Info("++++++++")
 		a.output.WriteLine(err.Error())
 	}
+	logger.Info("****************")
 	return string(out), err
 }
 
