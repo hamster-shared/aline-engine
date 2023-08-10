@@ -50,29 +50,21 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 		buildCommands = append([]string{}, precommand...)
 		buildCommands = append(buildCommands, shellCommand...)
 	}
-	logger.Info("$$$$$$$$$$$$$$$$$$$$$$$$$")
 	logger.Info("start exec qptos command")
 	out, err := a.ExecuteCommand(buildCommands, workdir)
-	logger.Info("&&&&&&&&&&&&&&&&&&")
 	logger.Debugf("aptos exec command success")
 	if err != nil {
 		logger.Errorf("exec aptos command failed:%s", err)
 		return nil, errors.New("docker build image failed")
 	}
-	logger.Info("222222222")
 	logger.Infof("aptos exec command result %s", out)
 	handleData, moduleName := a.handleBuildOutData(out)
-	logger.Info("11111111111")
-	logger.Info(handleData)
-	logger.Info(moduleName)
 	sequenceData := model.BuildSequence{
 		SequenceDada: handleData,
 		Name:         moduleName,
 	}
 	actionResult := &model.ActionResult{}
 	actionResult.BuildSequence = sequenceData
-	logger.Info("00000000000")
-	logger.Info(actionResult.BuildSequence)
 	return actionResult, nil
 }
 func (a *AptosBuildAction) Post() error {
@@ -85,15 +77,11 @@ func (a *AptosBuildAction) ExecuteCommand(commands []string, workdir string) (st
 	logger.Debugf("execute docker command: %s", strings.Join(commands, " "))
 	a.output.WriteCommandLine(strings.Join(commands, " "))
 	out, err := c.CombinedOutput()
-	logger.Info("-----------------")
 	fmt.Println(string(out))
-	logger.Info("-----------------")
 	a.output.WriteCommandLine(string(out))
 	if err != nil {
-		logger.Info("++++++++")
 		a.output.WriteLine(err.Error())
 	}
-	logger.Info("****************")
 	return string(out), err
 }
 
