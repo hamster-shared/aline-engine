@@ -54,7 +54,7 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 	if err != nil {
 		return nil, errors.New("docker build image failed")
 	}
-
+	logger.Infof("aptos exec command result %s", out)
 	handleData, moduleName := a.handleBuildOutData(out)
 	sequenceData := model.BuildSequence{
 		SequenceDada: handleData,
