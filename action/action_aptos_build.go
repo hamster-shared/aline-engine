@@ -51,7 +51,9 @@ func (a *AptosBuildAction) Hook() (*model.ActionResult, error) {
 		buildCommands = append(buildCommands, shellCommand...)
 	}
 	out, err := a.ExecuteCommand(buildCommands, workdir)
+	logger.Debugf("aptos exec command success")
 	if err != nil {
+		logger.Errorf("exec aptos command failed:%s", err)
 		return nil, errors.New("docker build image failed")
 	}
 	logger.Infof("aptos exec command result %s", out)
