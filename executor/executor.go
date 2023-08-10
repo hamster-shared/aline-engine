@@ -148,6 +148,9 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if actionResult != nil && len(actionResult.BuildData) > 0 {
 			jobWrapper.BuildData = append(jobWrapper.BuildData, actionResult.BuildData...)
 		}
+		if actionResult != nil && len(actionResult.BuildSequence.SequenceDada) > 0 {
+			jobWrapper.BuildSequence = actionResult.BuildSequence
+		}
 		if actionResult != nil && len(actionResult.MetaScanData) > 0 {
 			jobWrapper.MetaScanData = append(jobWrapper.MetaScanData, actionResult.MetaScanData...)
 		}
