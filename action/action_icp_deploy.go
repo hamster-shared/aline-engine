@@ -1,6 +1,7 @@
 package action
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hamster-shared/aline-engine/ctx"
 	"io"
@@ -18,22 +19,34 @@ import (
 	"github.com/hamster-shared/aline-engine/utils"
 )
 
+//**
+//**
+//**
+
+const MAINNET_CANDID_INTERFACE_PRINCIPAL = "a4gq6-oaaaa-aaaab-qaa4q-cai"
+
 // ICPDeployAction Upload files/directories to ipfs
 type ICPDeployAction struct {
-	artiUrl string
-	dfxJson string
-	userId  string
-	ac      ctx.ActionContext
+	artiUrl   string
+	dfxJson   string
+	userId    string
+	ac        ctx.ActionContext
+	deployCmd bool
 }
 
 func NewICPDeployAction(ac ctx.ActionContext) *ICPDeployAction {
 	userId := ac.GetUserId()
+	deployCmd := false
+	if ac.GetStepWith("deploy_cmd") == "true" {
+		deployCmd = true
+	}
 
 	return &ICPDeployAction{
-		artiUrl: ac.GetStepWith("arti_url"),
-		dfxJson: ac.GetStepWith("dfx_json"),
-		userId:  userId,
-		ac:      ac,
+		artiUrl:   ac.GetStepWith("arti_url"),
+		dfxJson:   ac.GetStepWith("dfx_json"),
+		deployCmd: deployCmd,
+		userId:    userId,
+		ac:        ac,
 	}
 }
 
@@ -47,8 +60,6 @@ func (a *ICPDeployAction) Pre() error {
 func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 
 	workdir := a.ac.GetWorkdir()
-
-	_ = os.RemoveAll(path.Join(workdir, "dist"))
 
 	err2 := a.downloadAndUnzip()
 	if err2 != nil {
@@ -80,27 +91,62 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	output, err := cmd.CombinedOutput()
 	logger.Info(output)
 
-	cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "300000000000")
-	cmd.Dir = workdir
-	logger.Infof("execute deploy canister command: %s", cmd)
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		logger.Error("执行CMD命令时发生错误:", err)
-		a.ac.WriteLine(string(output))
-		return nil, fmt.Errorf(string(output))
-	}
-
-	a.ac.WriteLine(string(output))
-	logger.Info(string(output))
-
 	actionResult := &model.ActionResult{}
-	urls := analyzeURL(string(output))
+	if a.deployCmd {
+		cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "300000000000")
+		cmd.Dir = workdir
+		logger.Infof("execute deploy canister command: %s", cmd)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			logger.Error("执行CMD命令时发生错误:", err)
+			a.ac.WriteLine(string(output))
+			return nil, fmt.Errorf(string(output))
+		}
 
-	for key, value := range urls {
-		actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
-			Name: key,
-			Url:  value,
-		})
+		a.ac.WriteLine(string(output))
+		logger.Info(string(output))
+
+		urls := analyzeURL(string(output))
+
+		for key, value := range urls {
+			actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
+				Name: key,
+				Url:  value,
+			})
+		}
+	} else {
+		// 解析dfx.json ，查询出罐名称
+		var dfxJson DFXJson
+
+		bytes, _ := os.ReadFile(path.Join(workdir, "dfx.json"))
+
+		if err := json.Unmarshal(bytes, &dfxJson); err != nil {
+
+			return actionResult, err
+		}
+
+		for canisterId, _ := range dfxJson.Canisters {
+			fmt.Println("canisterId : ", canisterId)
+			cmd := exec.Command(dfxBin, "canister", "install", canisterId, "--yes", "--mode=reinstall", "--network", icNetwork)
+			cmd.Dir = workdir
+			output, err = cmd.CombinedOutput()
+			logger.Info(output)
+			canisterType := dfxJson.Canisters[canisterId]["type"]
+			var url string
+			if canisterType == "assets" {
+				url = fmt.Sprintf("https://%s.icp0.io/", canisterId)
+			} else {
+				url = fmt.Sprintf("https://%s.raw.icp0.io/?id=%s", MAINNET_CANDID_INTERFACE_PRINCIPAL, canisterId)
+			}
+			if err != nil {
+				return nil, err
+			}
+			actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
+				Name: canisterId,
+				Url:  url,
+			})
+		}
+
 	}
 
 	return actionResult, nil
@@ -108,6 +154,24 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 
 func (a *ICPDeployAction) downloadAndUnzip() error {
 	workdir := a.ac.GetWorkdir()
+
+	// 解析dfx.json ，查询出罐名称
+	var dfxJson DFXJson
+
+	bytes, _ := os.ReadFile(path.Join(workdir, "dfx.json"))
+
+	if err := json.Unmarshal(bytes, &dfxJson); err != nil {
+
+		return err
+	}
+	for canisterId, _ := range dfxJson.Canisters {
+		canisterType := dfxJson.Canisters[canisterId]["type"]
+		if canisterType == "assets" {
+			_ = os.RemoveAll(path.Join(workdir, "dist"))
+		} else {
+			_ = os.RemoveAll(path.Join(workdir, ".dfx"))
+		}
+	}
 
 	var downloadFile string
 
@@ -217,4 +281,8 @@ func (a *ICPDeployAction) Post() error {
 	//缓存 .dfx 目录
 
 	return nil
+}
+
+type DFXJson struct {
+	Canisters map[string]map[string]any
 }

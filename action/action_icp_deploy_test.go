@@ -1,7 +1,10 @@
 package action
 
 import (
+	"encoding/json"
+	"fmt"
 	"gotest.tools/v3/assert"
+	"os"
 	"testing"
 )
 
@@ -13,4 +16,21 @@ func TestAnalyzeURL(t *testing.T) {
 
 	assert.Equal(t, 1, len(result), "url length != 1")
 	assert.Equal(t, "http://127.0.0.1:4943/?canisterId=dmalx-m4aaa-aaaaa-qaanq-cai", result["vuejs"])
+}
+
+func TestJson(t *testing.T) {
+	var dfxJson DFXJson
+
+	bytes, _ := os.ReadFile("/Users/mohaijiang/tmp/examples/motoko/calc/dfx.json")
+
+	if err := json.Unmarshal(bytes, &dfxJson); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(dfxJson)
+
+	for key, _ := range dfxJson.Canisters {
+		fmt.Println()
+		fmt.Println("canisterId : ", key, "type: ", dfxJson.Canisters[key]["type"])
+	}
 }
