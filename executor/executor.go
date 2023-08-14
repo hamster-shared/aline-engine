@@ -254,6 +254,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {
 				ah = action.NewOpenaiAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "icp-build" {
+				ah = action.NewICPBuildAction(actionContext)
 			} else if step.Uses == "icp-deploy" {
 				ah = action.NewICPDeployAction(actionContext)
 			} else if strings.Contains(step.Uses, "/") {
