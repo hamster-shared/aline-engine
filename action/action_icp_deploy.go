@@ -54,6 +54,49 @@ func (a *ICPDeployAction) Pre() error {
 	params := a.ac.GetParameters()
 	a.artiUrl = utils.ReplaceWithParam(a.artiUrl, params)
 	a.dfxJson = utils.ReplaceWithParam(a.dfxJson, params)
+
+	workdir := a.ac.GetWorkdir()
+
+	var dfxJson DFXJson
+	if err := json.Unmarshal([]byte(a.dfxJson), &dfxJson); err != nil {
+		return err
+	}
+
+	// 设置默认值
+	icNetwork := os.Getenv("IC_NETWORK")
+	if icNetwork == "" {
+		icNetwork = "local"
+	}
+	dfxBin := "/usr/local/bin/dfx"
+
+	locker, err := utils.Lock()
+	if err != nil {
+		return err
+	}
+
+	defer utils.Unlock(locker)
+
+	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
+	cmd.Dir = workdir
+	output, err := cmd.CombinedOutput()
+	logger.Info(output)
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(path.Join(workdir, CANISTER_IDS_JSON)); err != nil {
+		for canisterId, _ := range dfxJson.Canisters {
+			cmd = exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork)
+			cmd.Dir = workdir
+			logger.Infof("execute create canister command: %s", cmd)
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				logger.Error("execute command error:", err)
+				a.ac.WriteLine(string(output))
+				return fmt.Errorf(string(output))
+			}
+		}
+	}
 	return nil
 }
 
@@ -89,6 +132,9 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
 	logger.Info(output)
 
 	actionResult := &model.ActionResult{}
@@ -98,7 +144,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		logger.Infof("execute deploy canister command: %s", cmd)
 		output, err = cmd.CombinedOutput()
 		if err != nil {
-			logger.Error("执行CMD命令时发生错误:", err)
+			logger.Error("execute deploy fail:", err)
 			a.ac.WriteLine(string(output))
 			return nil, fmt.Errorf(string(output))
 		}
