@@ -69,7 +69,10 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 	cmd := exec.Command(DFX_BIN, "identity", "use", a.userId)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
-	logger.Info(output)
+	logger.Info(string(output))
+	if err != nil {
+		return nil, err
+	}
 
 	actionResult := &model.ActionResult{}
 
@@ -140,8 +143,8 @@ func (a *ICPBuildAction) buildMotoko(canisterId string, network string) error {
 	if mainPath == "" {
 		return errors.New("not found main path")
 	}
-	_ = os.MkdirAll(path.Join(workdir, ".dfx", network, "canisters", canisterId), os.ModeDir)
-	_ = os.MkdirAll(path.Join(workdir, ".dfx", network, "canisters", "idl"), os.ModeDir)
+	_ = os.MkdirAll(path.Join(workdir, ".dfx", network, "canisters", canisterId), os.ModePerm)
+	_ = os.MkdirAll(path.Join(workdir, ".dfx", network, "canisters", "idl"), os.ModePerm)
 
 	mocBin := fmt.Sprintf("%s/.cache/dfinity/versions/%s/moc", os.Getenv("HOME"), dfxVersion)
 	cmd := exec.Command(mocBin,
@@ -164,7 +167,7 @@ func (a *ICPBuildAction) buildMotoko(canisterId string, network string) error {
 	)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
-	logger.Info(output)
+	logger.Info(string(output))
 
 	return err
 }
