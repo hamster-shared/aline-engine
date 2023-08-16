@@ -32,8 +32,10 @@ type ICPBuildAction struct {
 
 func NewICPBuildAction(ac ctx.ActionContext) *ICPBuildAction {
 	userId := ac.GetUserId()
+	params := ac.GetParameters()
+	ac.WriteLine(fmt.Sprintf("dfx.json: %s", utils.ReplaceWithParam(ac.GetStepWith("dfx_json"), params)))
 	var dfxJson DFXJson
-	if err := json.Unmarshal([]byte(ac.GetStepWith("dfx_json")), &dfxJson); err != nil {
+	if err := json.Unmarshal([]byte(utils.ReplaceWithParam(ac.GetStepWith("dfx_json"), params)), &dfxJson); err != nil {
 		dfxJson = DFXJson{
 			Canisters: map[string]map[string]any{},
 		}
@@ -46,6 +48,9 @@ func NewICPBuildAction(ac ctx.ActionContext) *ICPBuildAction {
 }
 
 func (a *ICPBuildAction) Pre() error {
+
+	workdir := a.ac.GetWorkdir()
+	_ = os.RemoveAll(path.Join(workdir, ".dfx"))
 	return nil
 }
 
@@ -66,6 +71,7 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 
 	defer utils.Unlock(locker)
 
+	a.ac.WriteLine(fmt.Sprintf("use identity: %s", a.userId))
 	cmd := exec.Command(DFX_BIN, "identity", "use", a.userId)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
@@ -76,7 +82,7 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 
 	actionResult := &model.ActionResult{}
 
-	for canisterId, _ := range a.dfxJson.Canisters {
+	for canisterId := range a.dfxJson.Canisters {
 		canisterType := a.dfxJson.Canisters[canisterId]["type"]
 
 		var err error
@@ -100,7 +106,7 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 	}
 
 	// save arti did
-	for canisterId, _ := range a.dfxJson.Canisters {
+	for canisterId := range a.dfxJson.Canisters {
 		// check did exists
 		didPath := path.Join(workdir, ".dfx", icNetwork, "canisters", canisterId, fmt.Sprintf("%s.did", canisterId))
 		if _, err := os.Stat(didPath); err != nil {
@@ -132,6 +138,8 @@ func (a *ICPBuildAction) getDFXVersion() (string, error) {
 }
 
 func (a *ICPBuildAction) buildMotoko(canisterId string, network string) error {
+
+	a.ac.WriteLine("build with motoko")
 
 	workdir := a.ac.GetWorkdir()
 	dfxVersion, err := a.getDFXVersion()
@@ -173,6 +181,9 @@ func (a *ICPBuildAction) buildMotoko(canisterId string, network string) error {
 }
 
 func (a *ICPBuildAction) buildRust(canisterId string, network string) error {
+
+	a.ac.WriteLine("build with rust")
+
 	workdir := a.ac.GetWorkdir()
 	canisterDest := path.Join(workdir, ".dfx", network, "canisters", canisterId)
 	_ = os.MkdirAll(canisterDest, os.ModeDir)
