@@ -62,6 +62,8 @@ func (a *ICPDeployAction) Pre() error {
 		return err
 	}
 
+	fmt.Println(path.Join(workdir, "dfx.json"))
+
 	err2 := a.downloadAndUnzip()
 	if err2 != nil {
 		return err2
@@ -88,6 +90,7 @@ func (a *ICPDeployAction) Pre() error {
 	defer utils.Unlock(locker)
 
 	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
+	logger.Info("execute: ", strings.Join(cmd.Args, " "))
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
 	logger.Info(string(output))
@@ -97,7 +100,8 @@ func (a *ICPDeployAction) Pre() error {
 
 	if _, err := os.Stat(path.Join(workdir, CANISTER_IDS_JSON)); err != nil {
 		for canisterId, _ := range dfxJson.Canisters {
-			cmd = exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork)
+			cmd = exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000")
+			logger.Info("execute: ", strings.Join(cmd.Args, " "))
 			cmd.Dir = workdir
 			logger.Infof("execute create canister command: %s", cmd)
 			output, err = cmd.CombinedOutput()
@@ -130,16 +134,18 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	defer utils.Unlock(locker)
 
 	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
+	logger.Info("execute: ", strings.Join(cmd.Args, " "))
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
-	logger.Info(output)
+	logger.Info(string(output))
 
 	actionResult := &model.ActionResult{}
 	if a.deployCmd {
 		cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "300000000000")
+		logger.Info("execute: ", strings.Join(cmd.Args, " "))
 		cmd.Dir = workdir
 		logger.Infof("execute deploy canister command: %s", cmd)
 		output, err = cmd.CombinedOutput()
@@ -174,9 +180,10 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		for canisterId, _ := range dfxJson.Canisters {
 			fmt.Println("canisterId : ", canisterId)
 			cmd := exec.Command(dfxBin, "canister", "install", canisterId, "--yes", "--mode=reinstall", "--network", icNetwork)
+			logger.Info("execute: ", strings.Join(cmd.Args, " "))
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
-			logger.Info(output)
+			logger.Info(string(output))
 			canisterType := dfxJson.Canisters[canisterId]["type"]
 			var url string
 			if canisterType == "assets" {
@@ -204,7 +211,7 @@ func (a *ICPDeployAction) downloadAndUnzip() error {
 	// 解析dfx.json ，查询出罐名称
 	var dfxJson DFXJson
 
-	bytes, _ := os.ReadFile(path.Join(workdir, "dfx.json"))
+	bytes := []byte(a.dfxJson)
 
 	if err := json.Unmarshal(bytes, &dfxJson); err != nil {
 
