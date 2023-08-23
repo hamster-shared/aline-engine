@@ -62,6 +62,17 @@ func (a *ICPDeployAction) Pre() error {
 		return err
 	}
 
+	err2 := a.downloadAndUnzip()
+	if err2 != nil {
+		return err2
+	}
+
+	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
+	if err != nil {
+		logger.Error("write dfx.json error:", err)
+		return err
+	}
+
 	// 设置默认值
 	icNetwork := os.Getenv("IC_NETWORK")
 	if icNetwork == "" {
@@ -79,7 +90,7 @@ func (a *ICPDeployAction) Pre() error {
 	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
-	logger.Info(output)
+	logger.Info(string(output))
 	if err != nil {
 		return err
 	}
@@ -103,17 +114,6 @@ func (a *ICPDeployAction) Pre() error {
 func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 
 	workdir := a.ac.GetWorkdir()
-
-	err2 := a.downloadAndUnzip()
-	if err2 != nil {
-		return nil, err2
-	}
-
-	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
-	if err != nil {
-		logger.Error("write dfx.json error:", err)
-		return nil, err
-	}
 
 	// 设置默认值
 	icNetwork := os.Getenv("IC_NETWORK")
