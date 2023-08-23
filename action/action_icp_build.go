@@ -176,6 +176,7 @@ func (a *ICPBuildAction) buildMotoko(canisterId string, network string) error {
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
 	logger.Info(string(output))
+	a.ac.WriteLine(string(output))
 
 	return err
 }
@@ -203,6 +204,7 @@ func (a *ICPBuildAction) buildRust(canisterId string, network string) error {
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
 	logger.Info(output)
+	a.ac.WriteLine(string(output))
 
 	if err != nil {
 		return err
