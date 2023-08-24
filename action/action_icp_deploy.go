@@ -57,14 +57,36 @@ func (a *ICPDeployAction) Pre() error {
 
 	workdir := a.ac.GetWorkdir()
 
+	// 设置默认值
+	icNetwork := os.Getenv("IC_NETWORK")
+	if icNetwork == "" {
+		icNetwork = "local"
+	}
+	dfxBin := "/usr/local/bin/dfx"
+
 	var dfxJson DFXJson
 	if err := json.Unmarshal([]byte(a.dfxJson), &dfxJson); err != nil {
 		return err
 	}
 
-	fmt.Println(path.Join(workdir, "dfx.json"))
+	isDepoyed := checkIsDeployed(workdir, icNetwork)
 
-	err2 := a.downloadAndUnzip()
+	if !isDepoyed {
+		for canisterId, _ := range dfxJson.Canisters {
+			cmd := exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000")
+			logger.Info("execute: ", strings.Join(cmd.Args, " "))
+			cmd.Dir = workdir
+			logger.Infof("execute create canister command: %s", cmd)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				logger.Error("execute command error:", err)
+				a.ac.WriteLine(string(output))
+				return fmt.Errorf(string(output))
+			}
+		}
+	}
+
+	err2 := a.downloadAndUnzip(icNetwork)
 	if err2 != nil {
 		return err2
 	}
@@ -74,13 +96,6 @@ func (a *ICPDeployAction) Pre() error {
 		logger.Error("write dfx.json error:", err)
 		return err
 	}
-
-	// 设置默认值
-	icNetwork := os.Getenv("IC_NETWORK")
-	if icNetwork == "" {
-		icNetwork = "local"
-	}
-	dfxBin := "/usr/local/bin/dfx"
 
 	locker, err := utils.Lock()
 	if err != nil {
@@ -98,21 +113,17 @@ func (a *ICPDeployAction) Pre() error {
 		return err
 	}
 
-	if _, err := os.Stat(path.Join(workdir, CANISTER_IDS_JSON)); err != nil {
-		for canisterId, _ := range dfxJson.Canisters {
-			cmd = exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000")
-			logger.Info("execute: ", strings.Join(cmd.Args, " "))
-			cmd.Dir = workdir
-			logger.Infof("execute create canister command: %s", cmd)
-			output, err = cmd.CombinedOutput()
-			if err != nil {
-				logger.Error("execute command error:", err)
-				a.ac.WriteLine(string(output))
-				return fmt.Errorf(string(output))
-			}
-		}
-	}
 	return nil
+}
+
+func checkIsDeployed(workdir string, network string) bool {
+	if network == "ic" {
+		_, err := os.Stat(path.Join(workdir, CANISTER_IDS_JSON))
+		return err == nil
+	} else {
+		_, err := os.Stat(path.Join(workdir, ".dfx", network, CANISTER_IDS_JSON))
+		return err == nil
+	}
 }
 
 func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
@@ -205,7 +216,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	return actionResult, nil
 }
 
-func (a *ICPDeployAction) downloadAndUnzip() error {
+func (a *ICPDeployAction) downloadAndUnzip(network string) error {
 	workdir := a.ac.GetWorkdir()
 
 	// 解析dfx.json ，查询出罐名称
@@ -222,7 +233,7 @@ func (a *ICPDeployAction) downloadAndUnzip() error {
 		if canisterType == "assets" {
 			_ = os.RemoveAll(path.Join(workdir, "dist"))
 		} else {
-			_ = os.RemoveAll(path.Join(workdir, ".dfx"))
+			_ = os.RemoveAll(path.Join(workdir, ".dfx", network, "canisters"))
 		}
 	}
 
