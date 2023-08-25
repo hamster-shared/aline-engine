@@ -72,6 +72,13 @@ func (a *ICPDeployAction) Pre() error {
 	isDepoyed := checkIsDeployed(workdir, icNetwork)
 
 	if !isDepoyed {
+		logger.Info("write dfx.json: ", a.dfxJson)
+		err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
+		if err != nil {
+			logger.Error("write dfx.json error:", err)
+			return err
+		}
+
 		for canisterId, _ := range dfxJson.Canisters {
 			cmd := exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000")
 			logger.Info("execute: ", strings.Join(cmd.Args, " "))
@@ -91,6 +98,7 @@ func (a *ICPDeployAction) Pre() error {
 		return err2
 	}
 
+	logger.Info("write dfx.json: ", a.dfxJson)
 	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
 	if err != nil {
 		logger.Error("write dfx.json error:", err)
@@ -172,8 +180,18 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		urls := analyzeURL(string(output))
 
 		for key, value := range urls {
+			cmd = exec.Command(dfxBin, "canister", "id", key, "--network", icNetwork)
+			cmd.Dir = workdir
+			output, err = cmd.CombinedOutput()
+			logger.Info(string(output))
+			canisterId := strings.TrimSpace(string(output))
+			if err != nil {
+				return nil, err
+			}
+
 			actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
 				Name: key,
+				Cid:  canisterId,
 				Url:  value,
 			})
 		}
@@ -188,14 +206,24 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 			return actionResult, err
 		}
 
-		for canisterId, _ := range dfxJson.Canisters {
-			fmt.Println("canisterId : ", canisterId)
-			cmd := exec.Command(dfxBin, "canister", "install", canisterId, "--yes", "--mode=reinstall", "--network", icNetwork)
+		for canisterName, _ := range dfxJson.Canisters {
+			cmd = exec.Command(dfxBin, "canister", "id", canisterName, "--network", icNetwork)
+			cmd.Dir = workdir
+			output, err = cmd.CombinedOutput()
+			logger.Info(string(output))
+			canisterId := strings.TrimSpace(string(output))
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println("canisterName : ", canisterName)
+			cmd := exec.Command(dfxBin, "canister", "install", canisterName, "--yes", "--mode=reinstall", "--network", icNetwork)
 			logger.Info("execute: ", strings.Join(cmd.Args, " "))
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
-			canisterType := dfxJson.Canisters[canisterId]["type"]
+			canisterType := dfxJson.Canisters[canisterName]["type"]
+
 			var url string
 			if canisterType == "assets" {
 				url = fmt.Sprintf("https://%s.icp0.io/", canisterId)
@@ -206,7 +234,8 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 				return nil, err
 			}
 			actionResult.Deploys = append(actionResult.Deploys, model.DeployInfo{
-				Name: canisterId,
+				Name: canisterName,
+				Cid:  canisterId,
 				Url:  url,
 			})
 		}
