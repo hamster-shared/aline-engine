@@ -112,7 +112,7 @@ func (a *ICPDeployAction) Pre() error {
 
 	defer utils.Unlock(locker)
 
-	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
+	cmd := exec.Command(dfxBin, "identity", "use", a.userId, "-qq")
 	logger.Info("execute: ", strings.Join(cmd.Args, " "))
 	cmd.Dir = workdir
 	output, err := cmd.CombinedOutput()
@@ -180,7 +180,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		urls := analyzeURL(string(output))
 
 		for key, value := range urls {
-			cmd = exec.Command(dfxBin, "canister", "id", key, "--network", icNetwork)
+			cmd = exec.Command(dfxBin, "canister", "id", key, "--network", icNetwork, "-qq")
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
@@ -207,7 +207,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		}
 
 		for canisterName, _ := range dfxJson.Canisters {
-			cmd = exec.Command(dfxBin, "canister", "id", canisterName, "--network", icNetwork)
+			cmd = exec.Command(dfxBin, "canister", "id", canisterName, "--network", icNetwork, "-qq")
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
