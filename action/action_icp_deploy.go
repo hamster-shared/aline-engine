@@ -211,6 +211,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
+
 			canisterId := strings.TrimSpace(string(output))
 			if err != nil {
 				return nil, err
@@ -222,6 +223,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
+			a.ac.WriteLine(string(output))
 			canisterType := dfxJson.Canisters[canisterName]["type"]
 
 			var url string
