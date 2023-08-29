@@ -64,6 +64,22 @@ func (a *ICPDeployAction) Pre() error {
 	}
 	dfxBin := "/usr/local/bin/dfx"
 
+	locker, err := utils.Lock()
+	if err != nil {
+		return err
+	}
+
+	defer utils.Unlock(locker)
+
+	cmd := exec.Command(dfxBin, "identity", "use", a.userId, "-qq")
+	logger.Info("execute: ", strings.Join(cmd.Args, " "))
+	cmd.Dir = workdir
+	output, err := cmd.CombinedOutput()
+	logger.Info(string(output))
+	if err != nil {
+		return err
+	}
+
 	var dfxJson DFXJson
 	if err := json.Unmarshal([]byte(a.dfxJson), &dfxJson); err != nil {
 		return err
@@ -99,25 +115,9 @@ func (a *ICPDeployAction) Pre() error {
 	}
 
 	logger.Info("write dfx.json: ", a.dfxJson)
-	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
+	err = os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
 	if err != nil {
 		logger.Error("write dfx.json error:", err)
-		return err
-	}
-
-	locker, err := utils.Lock()
-	if err != nil {
-		return err
-	}
-
-	defer utils.Unlock(locker)
-
-	cmd := exec.Command(dfxBin, "identity", "use", a.userId, "-qq")
-	logger.Info("execute: ", strings.Join(cmd.Args, " "))
-	cmd.Dir = workdir
-	output, err := cmd.CombinedOutput()
-	logger.Info(string(output))
-	if err != nil {
 		return err
 	}
 
