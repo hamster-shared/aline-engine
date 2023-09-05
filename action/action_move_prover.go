@@ -44,7 +44,7 @@ func (a *MoveProverAction) Pre() error {
 
 func (a *MoveProverAction) Hook() (*model.ActionResult, error) {
 
-	a.output.NewStep("MoveProver")
+	//a.output.NewStep("Check by Move Prove")
 
 	stack := a.ctx.Value(STACK).(map[string]interface{})
 
