@@ -110,7 +110,7 @@ func (a *MoveProverAction) Hook() (*model.ActionResult, error) {
 		replaceAfterString := compile.ReplaceAllString(out, "")
 		replaceAfterString = strings.ReplaceAll(replaceAfterString, "\u001B", "")
 		//replaceAfterString = strings.ReplaceAll(replaceAfterString, "[38;5;11m", "")
-		if strings.Contains(replaceAfterString, "Error") && strings.Contains(replaceAfterString, "failed") {
+		if strings.Contains(replaceAfterString, "Unable to resolve packages for package") {
 			return nil, errors.New(replaceAfterString)
 		}
 		create, err := os.Create(dest)
