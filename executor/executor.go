@@ -271,11 +271,11 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
 			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
-		}
 
-		for !stack.IsEmpty() {
-			ah, _ := stack.Pop()
-			_ = ah.Post()
+			for !stack.IsEmpty() {
+				ah, _ := stack.Pop()
+				_ = ah.Post()
+			}
 		}
 
 		if err != nil {
