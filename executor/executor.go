@@ -139,7 +139,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if actionResult != nil && len(actionResult.Reports) > 0 {
 			jobWrapper.Reports = append(jobWrapper.Reports, actionResult.Reports...)
 		}
-		if actionResult != nil && actionResult.CodeInfo != "" {
+		if actionResult != nil && actionResult.CodeInfo.CommitId != "" {
 			jobWrapper.CodeInfo = actionResult.CodeInfo
 		}
 		if actionResult != nil && len(actionResult.Deploys) > 0 {

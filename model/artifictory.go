@@ -36,10 +36,17 @@ type MetaScanReport struct {
 }
 
 type ActionResult struct {
-	CodeInfo     string
+	CodeInfo     CodeInfo
 	Artifactorys []Artifactory    `json:"artifactorys"`
 	Reports      []Report         `json:"reports"`
 	Deploys      []DeployInfo     `json:"deploys"`
 	BuildData    []BuildInfo      `json:"buildData"`
 	MetaScanData []MetaScanReport `json:"metaScanData"`
+}
+
+type CodeInfo struct {
+	Branch        string `json:"branch"`
+	CommitId      string `json:"commitId"`
+	CommitDate    string `json:"commitDate"`
+	CommitMessage string `json:"commitMessage"`
 }

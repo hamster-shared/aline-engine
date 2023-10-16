@@ -20,7 +20,7 @@ type Engine interface {
 	UpdateJob(name, newName, jobYaml string) error
 	GetJob(name string) (*model.Job, error)
 	GetJobs(keyword string, page, size int) (*model.JobPage, error)
-	GetCodeInfo(name string, historyId int) (string, error)
+	GetCodeInfo(name string, historyId int) (*model.CodeInfo, error)
 	ExecuteJob(name string, id int) (*model.JobDetail, error)
 	ReExecuteJob(name string, id int) error
 	GetJobHistory(name string, id int) (*model.JobDetail, error)
@@ -109,12 +109,12 @@ func (e *engine) GetJobs(keyword string, page, size int) (*model.JobPage, error)
 	return jober.JobList(keyword, page, size)
 }
 
-func (e *engine) GetCodeInfo(name string, historyId int) (string, error) {
+func (e *engine) GetCodeInfo(name string, historyId int) (*model.CodeInfo, error) {
 	jobDetail, err := jober.GetJobDetail(name, historyId)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return jobDetail.CodeInfo, nil
+	return &jobDetail.CodeInfo, nil
 }
 
 func (e *engine) ExecuteJob(name string, id int) (*model.JobDetail, error) {
