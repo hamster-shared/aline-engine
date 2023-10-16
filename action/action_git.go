@@ -115,7 +115,8 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	}
 
 	//dateCommand := "git --no-pager log --pretty=format:“%cd” --date=format:'%b %e %Y' " + commitId
-	dateCommand := []string{"git", "--no-pager", "log", "--pretty=format:“%cd”", "--date=format:'%b %e %Y'", "-1", "927408e07b3feb9b6f1e5f1419bcae1db341c44c"}
+	dateCommand := []string{"git", "--no-pager", "log", "--pretty=format:“%cd”", "--date=format:'%b %e %Y'", "-1"}
+	dateCommand = append(dateCommand, commitId)
 	commitDate, err := a.ExecuteCommandDirect(dateCommand)
 	if err != nil {
 		return nil, err
