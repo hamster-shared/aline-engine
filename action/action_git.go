@@ -114,19 +114,6 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 		return nil, err
 	}
 
-	//dateCommand := "git --no-pager log --pretty=format:“%cd” --date=format:'%b %e %Y' " + commitId
-	dateCommand := []string{"git", "--no-pager", "log", "--pretty=format:“%cd”", "--date=format:'%b %e %Y'", "-1"}
-	dateCommand = append(dateCommand, commitId)
-	commitDate, err := a.ExecuteCommandDirect(dateCommand)
-	if err != nil {
-		return nil, err
-	}
-	messageCommand := "git --no-pager log --pretty=format:“%s” -1 " + commitId
-	commitMessage, err := a.ExecuteCommandDirect(strings.Fields(messageCommand))
-	if err != nil {
-		return nil, err
-	}
-
 	command = "git config core.sparsecheckout "
 	_, _ = a.ExecuteStringCommand(command)
 
@@ -154,6 +141,18 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	command = fmt.Sprintf("git checkout -b %s %s", a.branch, commitId)
 	out, err = a.ExecuteStringCommand(command)
 	a.output.WriteLine(out)
+	if err != nil {
+		return nil, err
+	}
+
+	//dateCommand := "git --no-pager log --pretty=format:“%cd” --date=format:'%b %e %Y' " + commitId
+	dateCommand := []string{"git", "--no-pager", "log", "--pretty=format:“%cd”", "--date=format:'%b %e %Y'", "-1", commitId}
+	commitDate, err := a.ExecuteCommandDirect(dateCommand)
+	if err != nil {
+		return nil, err
+	}
+	messageCommand := "git --no-pager log --pretty=format:“%s” -1 " + commitId
+	commitMessage, err := a.ExecuteCommandDirect(strings.Fields(messageCommand))
 	if err != nil {
 		return nil, err
 	}
