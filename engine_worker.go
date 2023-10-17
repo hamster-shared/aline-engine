@@ -110,7 +110,7 @@ func (e *workerEngine) handleDoneJob() {
 			statusChan := e.executeClient.GetStatusChangeChan()
 			jobResultStatus := <-statusChan
 			e.doneJobList.Store(utils.FormatJobToString(jobResultStatus.JobName, jobResultStatus.JobId), struct{}{})
-			logger.Debugf("job %s-%d done, status: %d", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status.ToString())
+			logger.Debugf("job %s-%d done, status: %s", jobResultStatus.JobName, jobResultStatus.JobId, jobResultStatus.Status.ToString())
 			if e.address != "127.0.0.1" {
 				// 回传日志
 				logMsg, _ := e.getLogAndJobDetailMessage(jobResultStatus.JobName, jobResultStatus.JobId)
