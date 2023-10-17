@@ -314,9 +314,10 @@ func startScanTask(projectId, engineType, token, organizationId, userId string) 
 		CommitHash: "",
 	}
 	scanData := TaskScan{
-		SubPath:      "",
-		Mode:         "",
-		IgnoredPaths: "node_modules,test,tests,mock",
+		SubPath:            "",
+		Mode:               "",
+		IgnoredPaths:       "node_modules,test,tests,mock",
+		ExperimentalAiScan: "QUICK",
 	}
 	envData := TaskEnv{
 		Node:           "",
@@ -369,9 +370,10 @@ type BaseEntity struct {
 }
 
 type TaskScan struct {
-	SubPath      string `json:"sub_path"`
-	Mode         string `json:"mode"`
-	IgnoredPaths string `json:"ignored_paths"`
+	SubPath            string `json:"sub_path"`
+	Mode               string `json:"mode"`
+	IgnoredPaths       string `json:"ignored_paths"`
+	ExperimentalAiScan string `json:"experimental_ai_scan"`
 }
 
 type TaskEnv struct {
