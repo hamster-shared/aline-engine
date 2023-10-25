@@ -162,8 +162,8 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 		CodeInfo: model2.CodeInfo{
 			Branch:        a.branch,
 			CommitId:      commitId[0:6],
-			CommitDate:    strings.ReplaceAll(commitDate, `"`, ""),
-			CommitMessage: strings.ReplaceAll(commitMessage, `"`, ""),
+			CommitDate:    strings.ReplaceAll(commitDate, `"`, ``),
+			CommitMessage: strings.ReplaceAll(commitMessage, `"`, ``),
 		},
 	}, nil
 }
