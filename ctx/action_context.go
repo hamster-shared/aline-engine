@@ -30,12 +30,20 @@ func (a *ActionContext) GetStackValue(key string) any {
 	return a.GetStack()[key]
 }
 
+func (a *ActionContext) GetId() string {
+	return a.GetStack()["id"].(string)
+}
+
 func (a *ActionContext) GetWorkdir() string {
 	return a.GetStack()["workdir"].(string)
 }
 
 func (a *ActionContext) GetUserId() string {
 	return a.GetStack()["userId"].(string)
+}
+
+func (a *ActionContext) GetJobName() string {
+	return a.GetStack()["name"].(string)
 }
 
 func (a *ActionContext) WriteLine(content string) {

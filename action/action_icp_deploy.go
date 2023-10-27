@@ -57,6 +57,17 @@ func (a *ICPDeployAction) Pre() error {
 
 	workdir := a.ac.GetWorkdir()
 
+	cacheDir := path.Join(workdir, ".dfx")
+	//fmt.Println(path)
+
+	homeDir, _ := os.UserHomeDir()
+	toCacheDir := path.Join(homeDir, "pipelines/jobs", a.ac.GetJobName(), ".dfx")
+	_ = os.MkdirAll(toCacheDir, os.ModePerm)
+	_ = os.MkdirAll(cacheDir, os.ModePerm)
+	fmt.Println(toCacheDir)
+
+	_ = copyDir(toCacheDir, cacheDir)
+
 	// 设置默认值
 	icNetwork := os.Getenv("IC_NETWORK")
 	if icNetwork == "" {
@@ -373,11 +384,71 @@ func analyzeURL(output string) map[string]string {
 }
 
 func (a *ICPDeployAction) Post() error {
-	//缓存 .dfx 目录
+	//TODO... 缓存 .dfx 目录
+	workdir := a.ac.GetWorkdir()
+	cacheDir := path.Join(workdir, ".dfx")
+	//fmt.Println(path)
 
+	homeDir, _ := os.UserHomeDir()
+	toCacheDir := path.Join(homeDir, "pipelines/jobs", a.ac.GetJobName(), ".dfx")
+	_ = os.MkdirAll(toCacheDir, os.ModePerm)
+	fmt.Println(toCacheDir)
+
+	_ = copyDir(cacheDir, toCacheDir)
 	return nil
 }
 
 type DFXJson struct {
 	Canisters map[string]map[string]any
+}
+
+func copyDir(src, dst string) error {
+	// 打开源目录
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	// 创建目标目录
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return err
+	}
+
+	// 读取源目录
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			// 递归复制子目录
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			// 复制文件
+			srcFile, err := os.Open(srcPath)
+			if err != nil {
+				return err
+			}
+			defer srcFile.Close()
+
+			dstFile, err := os.Create(dstPath)
+			if err != nil {
+				return err
+			}
+			defer dstFile.Close()
+
+			_, err = io.Copy(dstFile, srcFile)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

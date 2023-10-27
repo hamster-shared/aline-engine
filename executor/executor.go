@@ -265,16 +265,18 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			err = executeAction(ah, jobWrapper)
 			dataTime := time.Since(stageWapper.Stage.Steps[index].StartTime)
 			stageWapper.Stage.Steps[index].Duration = dataTime.Milliseconds()
-			if err != nil {
-				stageWapper.Stage.Steps[index].Status = model.STATUS_FAIL
-				break
-			}
-			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
-			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
-
 			for !stack.IsEmpty() {
 				ah, _ := stack.Pop()
 				_ = ah.Post()
+			}
+			if err != nil {
+				stageWapper.Stage.Steps[index].Status = model.STATUS_FAIL
+			} else {
+				stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
+			}
+			err := jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			if err != nil {
+				logger.Error("SaveJobDetail error: ", err)
 			}
 		}
 
