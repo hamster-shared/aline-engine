@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hamster-shared/aline-engine/action/icp_assert"
 	"github.com/hamster-shared/aline-engine/ctx"
 	"github.com/hamster-shared/aline-engine/logger"
 	"github.com/hamster-shared/aline-engine/model"
@@ -94,7 +95,7 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 		case "custom":
 			err = errors.New("unsupport custom now")
 		case "assets":
-			err = errors.New("unsupport assets now")
+			err = a.buildAsserts(canisterId, icNetwork)
 		case "pull":
 			err = errors.New("unsupport pull now")
 		default:
@@ -214,6 +215,22 @@ func (a *ICPBuildAction) buildRust(canisterId string, network string) error {
 	err = copyFile(path.Join(workdir, "target/wasm32-unknown-unknown/release", fmt.Sprintf("%s.wasm", canisterId)), canisterDest)
 
 	return err
+}
+
+func (a *ICPBuildAction) buildAsserts(canisterId string, network string) error {
+	a.ac.WriteLine("build with assert")
+
+	workdir := a.ac.GetWorkdir()
+	canisterDest := path.Join(workdir, ".dfx", network, "canisters", canisterId)
+	_ = os.MkdirAll(canisterDest, os.ModeDir)
+	_ = os.MkdirAll(path.Join(workdir, ".dfx", network, "canisters", "idl"), os.ModeDir)
+
+	didData := icp_assert.MustAsset("assetstorage.did")
+	wasmData := icp_assert.MustAsset("assetstorage.wasm.gz")
+
+	_ = os.WriteFile(path.Join(canisterDest, "assetstorage.did"), didData, os.ModePerm)
+	_ = os.WriteFile(path.Join(canisterDest, fmt.Sprintf("%s.wasm.gz", canisterId)), wasmData, os.ModePerm)
+	return nil
 }
 
 func copyFile(srcPath, destDir string) error {
