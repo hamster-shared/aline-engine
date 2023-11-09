@@ -244,12 +244,14 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewCheckAggregationAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "deploy-ink-contract" {
 				ah = action.NewInkAction(step, ctx, jobWrapper.Output)
-			} else if step.Uses == "frontend-check" {
+			} else if step.Uses == "frontend- check" {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "eth-gas-reporter" {
 				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "aptos-check" {
 				ah = action.NewMoveProverAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "sui-check" {
+				ah = action.NewMoveLint(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {

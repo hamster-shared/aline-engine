@@ -58,6 +58,9 @@ const (
 	MoveProve                 = "Move Prove"
 	MoveProveCheckOutputDir   = "move-prover"
 	MoveProveCheck            = "docker run --rm %s -v %s:/tmp hamstershare/aptoslabs-tools:aptos-node-v1.3.3 aptos move prove --package-dir %s %s"
+	MoveLint                  = "Move-Lint"
+	MoveLintCheckOutputDir    = "move-lint"
+	MoveLintCheck             = " docker run --rm -v %s:/tmp hamstershare/rust-tools:1.73 move-lint -j -p /tmp"
 )
 
 var InkUrlMap = map[string]string{
