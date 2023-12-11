@@ -74,6 +74,9 @@ func (m *MoveLint) Hook() (*model.ActionResult, error) {
 	if out == "" && err != nil {
 		return nil, err
 	}
+	if strings.Contains(out, "Error {") {
+		return nil, errors.New(out)
+	}
 	dest := path2.Join(destDir, consts.MoveLintCheckOutputDir+consts.SuffixType)
 	create, err := os.Create(dest)
 	if err != nil {
