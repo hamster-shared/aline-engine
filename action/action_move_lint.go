@@ -136,7 +136,7 @@ func (m *MoveLint) Post() error {
 		for _, moveLintJson := range moveLintJsons {
 			var suiCheckReportDetails model.ContractStyleGuideValidationsReportDetails
 			suiCheckReportDetails.Level = moveLintJson.Level
-			suiCheckReportDetails.Line = string(rune(moveLintJson.Lines[0]))
+			suiCheckReportDetails.Line = strconv.Itoa(moveLintJson.Lines[0])
 			suiCheckReportDetails.Note = moveLintJson.Title + ": " + moveLintJson.Verbose
 			suiCheckReportDetailsList = append(suiCheckReportDetailsList, suiCheckReportDetails)
 			successFlag = false
