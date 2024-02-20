@@ -53,27 +53,27 @@ func (a *ICPBuildAction) Hook() (*model.ActionResult, error) {
 		icNetwork = "local"
 	}
 
-	locker, err := utils.Lock()
-	if err != nil {
-		return nil, err
-	}
+	//locker, err := utils.Lock()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//defer utils.Unlock(locker)
 
-	defer utils.Unlock(locker)
-
-	a.ac.WriteLine(fmt.Sprintf("use identity: %s", a.userId))
-	cmd := exec.Command(DFX_BIN, "identity", "use", a.userId)
-	cmd.Dir = workdir
-	output, err := cmd.CombinedOutput()
-	a.ac.WriteLine(string(output))
-	if err != nil {
-		return nil, err
-	}
+	//a.ac.WriteLine(fmt.Sprintf("use identity: %s", a.userId))
+	//cmd := exec.Command(DFX_BIN, "identity", "use", a.userId)
+	//cmd.Dir = workdir
+	//output, err := cmd.CombinedOutput()
+	//a.ac.WriteLine(string(output))
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	actionResult := &model.ActionResult{}
 
-	cmd = exec.Command(DFX_BIN, "build", "--check", "--network", icNetwork)
+	cmd := exec.Command(DFX_BIN, "build", "--check", "--network", icNetwork, "--identity", a.userId)
 	cmd.Dir = workdir
-	output, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	a.ac.WriteLine(string(output))
 	if err != nil {
 		return nil, err
