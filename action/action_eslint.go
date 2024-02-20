@@ -161,6 +161,7 @@ func (a *EslintAction) Post() error {
 		return nil
 	}
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.EslintCheckReportDetails]
+	var total int
 	for _, eslintCheckResult := range eslintCheckResultList {
 		if len(eslintCheckResult.Messages) < 1 {
 			continue
@@ -183,9 +184,10 @@ func (a *EslintAction) Post() error {
 			eslintCheckReportDetailsList = append(eslintCheckReportDetailsList, eslintCheckReportDetails)
 		}
 		checkResultDetails.Message = eslintCheckReportDetailsList
+		total = total + checkResultDetails.Issue
 		checkResultDetailsList = append(checkResultDetailsList, checkResultDetails)
 	}
-	checkResult := model.NewContractCheckResult(consts.FrontEndCheckReport.Name, consts.CheckSuccess.Result, consts.FrontEndCheckReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.FrontEndCheckReport.Name, consts.CheckSuccess.Result, consts.FrontEndCheckReport.Tool, checkResultDetailsList, total)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	if err != nil {
 		return err

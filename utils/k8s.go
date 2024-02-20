@@ -3,7 +3,10 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/hamster-shared/aline-engine/consts"
+	"github.com/hamster-shared/aline-engine/logger"
 	"log"
+	"os"
 	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,6 +26,13 @@ func InitK8sClient() (*kubernetes.Clientset, error) {
 	} else {
 		kubeConfig = ""
 	}
+	_, err := os.Stat(kubeConfig)
+	if err != nil {
+		if os.IsNotExist(err) {
+			kubeConfig = ""
+		}
+	}
+	logger.Debugf("kube config path is: %s", kubeConfig)
 	// use the current context in kubeConfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
@@ -167,6 +177,8 @@ func CreateService(client *kubernetes.Clientset, username, serviceName string, p
 func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*networkingv1beta1.Ingress, error) {
 	var in *networkingv1beta1.Ingress
 	pathType := networkingv1beta1.PathTypePrefix
+	var tlsHost []string
+	tlsHost = append(tlsHost, gateway)
 	ingress := &networkingv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-ingress", serviceName),
@@ -196,6 +208,88 @@ func CreateIngress(client *kubernetes.Clientset, namespace, serviceName, gateway
 							},
 						},
 					},
+				},
+			},
+			TLS: []networkingv1beta1.IngressTLS{
+				{
+					Hosts:      tlsHost,
+					SecretName: consts.SecretName,
+				},
+			},
+		},
+	}
+	ingressClient := client.NetworkingV1().Ingresses(namespace)
+	list, err := ingressClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Println("get ingress list failed: ", err.Error())
+		return in, err
+	}
+	ingressExist := false
+	for _, ingressItem := range list.Items {
+		if ingressItem.Name == fmt.Sprintf("%s-ingress", serviceName) {
+			ingressExist = true
+			break
+		}
+	}
+	if !ingressExist {
+		in, err = client.NetworkingV1().Ingresses(namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
+		if err != nil {
+			log.Println("create service failed: ", err.Error())
+			return in, err
+		}
+	} else {
+		in, err = client.NetworkingV1().Ingresses(namespace).Update(context.Background(), ingress, metav1.UpdateOptions{})
+		if err != nil {
+			log.Println("update service failed: ", err.Error())
+			return in, err
+		}
+	}
+	return in, err
+}
+
+func CreateHttpsIngress(client *kubernetes.Clientset, namespace, serviceName, gateway string, ports []corev1.ServicePort) (*networkingv1beta1.Ingress, error) {
+	var in *networkingv1beta1.Ingress
+	pathType := networkingv1beta1.PathTypePrefix
+	var tlsHost []string
+	tlsHost = append(tlsHost, fmt.Sprintf("%s.%s", serviceName, gateway))
+	ingress := &networkingv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-ingress", serviceName),
+			Annotations: map[string]string{
+				"cert-manager.io/cluster-issuer":                 "letsencrypt-prod",
+				"kubernetes.io/ingress.class":                    "nginx",
+				"nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
+				"nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
+			},
+		},
+		Spec: networkingv1beta1.IngressSpec{
+			Rules: []networkingv1beta1.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.%s", serviceName, gateway),
+					IngressRuleValue: networkingv1beta1.IngressRuleValue{
+						HTTP: &networkingv1beta1.HTTPIngressRuleValue{
+							Paths: []networkingv1beta1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: networkingv1beta1.IngressBackend{
+										Service: &networkingv1beta1.IngressServiceBackend{
+											Name: serviceName,
+											Port: networkingv1beta1.ServiceBackendPort{
+												Number: ports[0].Port,
+											},
+										},
+									},
+									PathType: &pathType,
+								},
+							},
+						},
+					},
+				},
+			},
+			TLS: []networkingv1beta1.IngressTLS{
+				{
+					Hosts:      tlsHost,
+					SecretName: consts.SecretName,
 				},
 			},
 		},

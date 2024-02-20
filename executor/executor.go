@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	aline_context "github.com/hamster-shared/aline-engine/ctx"
 	"os"
 	"path"
 	"runtime"
@@ -88,6 +89,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 	}
 
 	engineContext["parameter"] = job.Parameter
+	engineContext["userId"] = job.UserId
 
 	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), "stack", engineContext))
 
@@ -137,7 +139,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		if actionResult != nil && len(actionResult.Reports) > 0 {
 			jobWrapper.Reports = append(jobWrapper.Reports, actionResult.Reports...)
 		}
-		if actionResult != nil && actionResult.CodeInfo != "" {
+		if actionResult != nil && actionResult.CodeInfo.CommitId != "" {
 			jobWrapper.CodeInfo = actionResult.CodeInfo
 		}
 		if actionResult != nil && len(actionResult.Deploys) > 0 {
@@ -145,6 +147,9 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		}
 		if actionResult != nil && len(actionResult.BuildData) > 0 {
 			jobWrapper.BuildData = append(jobWrapper.BuildData, actionResult.BuildData...)
+		}
+		if actionResult != nil && len(actionResult.MetaScanData) > 0 {
+			jobWrapper.MetaScanData = append(jobWrapper.MetaScanData, actionResult.MetaScanData...)
 		}
 		if err != nil {
 			job.Status = model.STATUS_FAIL
@@ -155,6 +160,30 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 
 	jobWrapper.Output = output.New(job.Name, jobWrapper.Id)
 
+	var jobDone = make(chan struct{})
+	defer close(jobDone)
+
+	// 定时保存运行状态到 job detail，以更新 step 的运行时间
+	go func(jobW *model.JobDetail) {
+		for {
+			select {
+			case <-jobDone:
+				return
+			default:
+				for i := range jobW.Stages {
+					for j := range jobW.Stages[i].Stage.Steps {
+						if jobW.Stages[i].Stage.Steps[j].Status == model.STATUS_RUNNING {
+							jobW.Stages[i].Stage.Steps[j].Duration = int64(time.Since(jobW.Stages[i].Stage.Steps[j].StartTime).Milliseconds())
+							// logger.Tracef("job: %s, step: %s, duration: %d", jobW.Name, jobW.Stages[i].Stage.Steps[j].Name, jobW.Stages[i].Stage.Steps[j].Duration)
+						}
+					}
+				}
+				jober.SaveJobDetail(jobW.Name, jobW)
+				time.Sleep(time.Second * 2)
+			}
+		}
+	}(jobWrapper)
+
 	for index, stageWapper := range jobWrapper.Stages {
 		//TODO ... stage 的输出也需要换成堆栈方式
 		logger.Info("stage: {")
@@ -163,7 +192,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		stageWapper.StartTime = time.Now()
 		jobWrapper.Stages[index] = stageWapper
 		jobWrapper.Output.NewStage(stageWapper.Name)
-		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 		for index, step := range stageWapper.Stage.Steps {
 			var ah action.ActionHandler
@@ -176,6 +205,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
+			_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			actionContext := aline_context.NewActionContext(step, ctx, jobWrapper.Output)
 			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
 			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
 			e.stepTimerMap.Store(utils.FormatJobToString(jobWrapper.Name, jobWrapper.Id), newStepTimer())
@@ -199,6 +230,8 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewK8sDeployAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "k8s-assign-domain" {
 				ah = action.NewK8sIngressAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "metascan_action" {
+				ah = action.NewMetaScanCheckAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "sol-profiler-check" {
 				ah = action.NewSolProfilerAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "solhint-check" {
@@ -211,14 +244,22 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewCheckAggregationAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "deploy-ink-contract" {
 				ah = action.NewInkAction(step, ctx, jobWrapper.Output)
-			} else if step.Uses == "frontend-check" {
+			} else if step.Uses == "frontend- check" {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "eth-gas-reporter" {
 				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "aptos-check" {
+				ah = action.NewMoveProverAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "sui-check" {
+				ah = action.NewMoveLint(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {
 				ah = action.NewOpenaiAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "icp-build" {
+				ah = action.NewICPBuildAction(actionContext)
+			} else if step.Uses == "icp-deploy" {
+				ah = action.NewICPDeployAction(actionContext)
 			} else if strings.Contains(step.Uses, "/") {
 				ah = action.NewRemoteAction(step, ctx)
 			}
@@ -226,16 +267,20 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			err = executeAction(ah, jobWrapper)
 			dataTime := time.Since(stageWapper.Stage.Steps[index].StartTime)
 			stageWapper.Stage.Steps[index].Duration = dataTime.Milliseconds()
+			for !stack.IsEmpty() {
+				ah, _ := stack.Pop()
+				_ = ah.Post()
+			}
 			if err != nil {
 				stageWapper.Stage.Steps[index].Status = model.STATUS_FAIL
+			} else {
+				stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
+			}
+			_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			if err != nil {
 				break
 			}
-			stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
-		}
 
-		for !stack.IsEmpty() {
-			ah, _ := stack.Pop()
-			_ = ah.Post()
 		}
 
 		if err != nil {
@@ -246,13 +291,12 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		dataTime := time.Since(stageWapper.StartTime)
 		stageWapper.Duration = dataTime.Milliseconds()
 		jobWrapper.Stages[index] = stageWapper
-		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 		logger.Info("}")
 		if err != nil {
 			cancel()
 			break
 		}
-
 	}
 	jobWrapper.Output.Done()
 
@@ -278,6 +322,8 @@ func (e *Executor) Cancel(jobName string, id int) error {
 		cancel()
 		// 删除
 		delete(e.cancelMap, strings.Join([]string{jobName, strconv.Itoa(id)}, "/"))
+	} else {
+		logger.Errorf("job cancel function not found: %s/%d", jobName, id)
 	}
 	e.StatusChan <- model.NewStatusChangeMsg(jobName, id, model.STATUS_STOP)
 	return nil
@@ -291,6 +337,7 @@ func (e *Executor) GetJobStatus(jobName string, jobID int) (model.Status, error)
 	return model.STATUS_NOTRUN, fmt.Errorf("job not found")
 }
 
+// 定时监听，以在任务超时时将其取消
 func (e *Executor) handleTimerListener() {
 	for {
 		e.stepTimerMap.Range(func(key, value any) bool {
@@ -323,6 +370,7 @@ func newStepTimer() *stepTimer {
 	}
 }
 
+// 如果单个步骤超时了，就取消，超时时间暂定为 30 分钟
 func (t *stepTimer) isTimeout() bool {
 	return time.Since(t.startTime) > time.Minute*consts.STEP_TIMEOUT_MINUTE
 }

@@ -19,6 +19,7 @@ type K8sIngressAction struct {
 	namespace    string
 	projectName  string
 	servicePorts string
+	configHttps  string
 	output       *output.Output
 	ctx          context.Context
 }
@@ -29,6 +30,7 @@ func NewK8sIngressAction(step model.Step, ctx context.Context, output *output.Ou
 		namespace:    step.With["namespace"],
 		projectName:  step.With["project_name"],
 		servicePorts: step.With["service_ports"],
+		configHttps:  step.With["config_https"],
 		ctx:          ctx,
 		output:       output,
 	}
@@ -62,28 +64,24 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("k8s service ports format failed: %s", err.Error())
 		return nil, err
 	}
-	serviceName := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
-	_, err = utils.CreateIngress(client, k.namespace, serviceName, k.gateway, servicePorts)
+	//serviceName := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
+	if k.configHttps == "true" {
+		_, err = utils.CreateHttpsIngress(client, k.namespace, k.projectName, k.gateway, servicePorts)
+	} else {
+		_, err = utils.CreateIngress(client, k.namespace, k.projectName, k.gateway, servicePorts)
+	}
 	if err != nil {
 		k.output.WriteLine(fmt.Sprintf("[ERROR]: k8s create ingress failed, %s", err.Error()))
 		logger.Errorf("k8s create ingress  failed: %s", err.Error())
 		return nil, err
 	}
-	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
+	//name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
 	for {
-		log.Println("------")
-		service, _ := client.CoreV1().Services(k.namespace).Get(context.Background(), name, metav1.GetOptions{})
-		log.Println("**************************")
+		service, _ := client.CoreV1().Services(k.namespace).Get(context.Background(), k.projectName, metav1.GetOptions{})
 		pods, _ := client.CoreV1().Pods(k.namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("app=%s", service.ObjectMeta.Name),
 		})
-		log.Println("-------------------------------")
-		log.Println(len(pods.Items))
-		log.Println("-------------------------------")
 		if len(pods.Items) > 0 {
-			log.Println("=++++++++++++++++++++")
-			log.Println(pods.Items[0].Status.Phase)
-			log.Println("=++++++++++++++++++++")
 			if pods.Items[0].Status.Phase == corev1.PodRunning {
 				break
 			}
@@ -93,8 +91,14 @@ func (k *K8sIngressAction) Hook() (*model.ActionResult, error) {
 		}
 	}
 	actionResult := &model.ActionResult{}
+	var url string
+	if k.configHttps == "true" {
+		url = fmt.Sprintf("wss://%s.%s", k.projectName, k.gateway)
+	} else {
+		url = fmt.Sprintf("https://%s.%s", k.projectName, k.gateway)
+	}
 	deployInfo := model.DeployInfo{
-		Url: fmt.Sprintf("http://%s.%s", serviceName, k.gateway),
+		Url: url,
 	}
 	actionResult.Deploys = append(actionResult.Deploys, deployInfo)
 	log.Println("=======================")

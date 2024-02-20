@@ -113,6 +113,7 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	commitId = strings.TrimSpace(commitId)
 
 	command = "git config core.sparsecheckout "
 	_, _ = a.ExecuteStringCommand(command)
@@ -145,9 +146,25 @@ func (a *GitAction) Hook() (*model2.ActionResult, error) {
 		return nil, err
 	}
 
+	dateCommand := []string{"git", "--no-pager", "log", "--pretty=format:'%cd'", "--date=format:'%b %e %Y'", "-1", commitId}
+	commitDate, err := a.ExecuteCommandDirect(dateCommand)
+	if err != nil {
+		return nil, err
+	}
+	messageCommand := "git --no-pager log --pretty=format:“%s” -1 " + commitId
+	commitMessage, err := a.ExecuteCommandDirect(strings.Fields(messageCommand))
+	if err != nil {
+		return nil, err
+	}
+
 	stack["workdir"] = a.workdir
 	return &model2.ActionResult{
-		CodeInfo: fmt.Sprintf("%s | %s", a.branch, commitId[0:6]),
+		CodeInfo: model2.CodeInfo{
+			Branch:        a.branch,
+			CommitId:      commitId[0:6],
+			CommitDate:    strings.ReplaceAll(commitDate, `"`, ``),
+			CommitMessage: strings.ReplaceAll(commitMessage, `"`, ``),
+		},
 	}, nil
 }
 

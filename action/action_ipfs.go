@@ -45,6 +45,7 @@ func (a *IpfsAction) Pre() error {
 	params := stack["parameter"].(map[string]string)
 	a.artiUrl = utils.ReplaceWithParam(a.artiUrl, params)
 	a.baseDir = utils.ReplaceWithParam(a.baseDir, params)
+	a.gateway = utils.ReplaceWithParam(a.gateway, params)
 	return nil
 }
 

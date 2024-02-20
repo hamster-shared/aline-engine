@@ -22,9 +22,11 @@ import (
 
 // SolHintAction SolHint 合约检查
 type SolHintAction struct {
-	path   string
-	ctx    context.Context
-	output *output.Output
+	path     string
+	ctx      context.Context
+	output   *output.Output
+	filePath []string
+	basePath string
 }
 
 func NewSolHintAction(step model.Step, ctx context.Context, output *output.Output) *SolHintAction {
@@ -88,6 +90,8 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 			return nil, err
 		}
 	}
+	a.basePath = workdir
+	var filePath []string
 	for _, path := range absPathList {
 		_, filenameOnly := utils.GetFilenameWithSuffixAndFilenameOnly(path)
 		dest := path2.Join(destDir, filenameOnly+consts.SuffixType)
@@ -105,8 +109,10 @@ func (a *SolHintAction) Hook() (*model.ActionResult, error) {
 		if err != nil {
 			return nil, err
 		}
+		filePath = append(filePath, path)
 		create.Close()
 	}
+	a.filePath = filePath
 	a.path = destDir
 	id, err := strconv.Atoi(jobId)
 	if err != nil {
@@ -144,6 +150,7 @@ func (a *SolHintAction) Post() error {
 	}
 	var checkResultDetailsList []model.ContractCheckResultDetails[[]model.ContractStyleGuideValidationsReportDetails]
 	successFlag := true
+	var total int
 	for _, info := range fileInfos {
 		path := path2.Join(a.path, info.Name())
 		var styleGuideValidationsReportDetailsList []model.ContractStyleGuideValidationsReportDetails
@@ -168,8 +175,18 @@ func (a *SolHintAction) Post() error {
 				successFlag = false
 			}
 		}
-
-		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		name := strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1)
+		for _, s := range a.filePath {
+			if strings.Contains(s, name) {
+				index := strings.Index(s, a.basePath+"/")
+				if index != -1 {
+					name = s[index+len(a.basePath+"/"):]
+					break
+				}
+			}
+		}
+		details := model.NewContractCheckResultDetails(name, len(styleGuideValidationsReportDetailsList), styleGuideValidationsReportDetailsList)
+		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
 	var result string
@@ -178,7 +195,7 @@ func (a *SolHintAction) Post() error {
 	} else {
 		result = consts.CheckFail.Result
 	}
-	checkResult := model.NewContractCheckResult(consts.ContractStyleGuideValidationsReport.Name, result, consts.ContractStyleGuideValidationsReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.ContractStyleGuideValidationsReport.Name, result, consts.ContractStyleGuideValidationsReport.Tool, checkResultDetailsList, total)
 	fmt.Println(checkResult)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	if err != nil {

@@ -1,0 +1,29 @@
+version: 1.0
+name: aptos-check
+stages:
+  Initialization:
+    steps:
+      - name: git-clone
+        uses: git-checkout
+        with:
+          url: https://github.com/daixiang11/hello_word.git
+          branch: main
+
+  Check Sui:
+    needs:
+      - Initialization
+    steps:
+      - name: install
+        run: |
+          yarn install
+      - name: sui-check
+        uses: sui-check
+        with:
+          path:
+
+  Output Results:
+    needs:
+      - Check Sui
+    steps:
+      - name: check-aggregation
+        uses: check-aggregation

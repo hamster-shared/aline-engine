@@ -2,13 +2,14 @@ package model
 
 import (
 	"fmt"
-	"github.com/hamster-shared/aline-engine/output"
-	"github.com/hamster-shared/aline-engine/utils"
 	"io"
 	"os"
 	"path"
 	"strconv"
 	"time"
+
+	"github.com/hamster-shared/aline-engine/output"
+	"github.com/hamster-shared/aline-engine/utils"
 )
 
 type Status int
@@ -21,11 +22,23 @@ const (
 	STATUS_STOP    Status = 4
 )
 
+func (s Status) ToString() string {
+	list := [...]string{
+		"not run",
+		"running",
+		"fail",
+		"success",
+		"stop",
+	}
+	return list[s]
+}
+
 type Job struct {
 	Version   string            `yaml:"version,omitempty" json:"version"`
 	Name      string            `yaml:"name,omitempty" json:"name"`
 	Stages    map[string]Stage  `yaml:"stages,omitempty" json:"stages"`
 	Parameter map[string]string `yaml:"parameter,omitempty" json:"parameter"`
+	UserId    string            `yaml:"user_id"`
 }
 
 type JobVo struct {
@@ -133,10 +146,10 @@ type JobLog struct {
 	// 持续时间
 	Duration time.Duration `json:"duration"`
 
-	//日志内容
+	// 日志内容
 	Content string `json:"content"`
 
-	//最后一行 行号
+	// 最后一行 行号
 	LastLine int `json:"lastLine"`
 }
 
@@ -146,13 +159,13 @@ type JobStageLog struct {
 	// 持续时间
 	Duration time.Duration `json:"duration"`
 
-	//日志内容
+	// 日志内容
 	Content string `json:"content"`
 
-	//最后一行 行号
+	// 最后一行 行号
 	LastLine int `json:"lastLine"`
 
-	//是否结束
+	// 是否结束
 	End bool `yaml:"end" json:"end"`
 }
 

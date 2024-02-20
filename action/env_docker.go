@@ -67,8 +67,9 @@ func (e *DockerEnv) Pre() error {
 	e.output.WriteCommandLine(strings.Join(commands, " "))
 	c := exec.Command(commands[0], commands[1:]...)
 	c.Env = os.Environ()
-	output, err := c.CombinedOutput()
+	output, err := c.Output()
 	if err != nil {
+		logger.Error(output)
 		logger.Errorf("execute docker command error: %s", err.Error())
 		return err
 	}

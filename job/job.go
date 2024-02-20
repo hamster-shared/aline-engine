@@ -27,10 +27,24 @@ func SaveJob(name string, yaml string) error {
 
 func SaveJobParams(name string, params map[string]string) error {
 	job, err := GetJobObject(name)
+
 	if err != nil {
 		return err
 	}
 	job.Parameter = params
+	content, err := yaml.Marshal(job)
+	if err != nil {
+		return err
+	}
+	return SaveJob(job.Name, string(content))
+}
+
+func SaveJobUserId(name string, userId string) error {
+	job, err := GetJobObject(name)
+	job.UserId = userId
+	if err != nil {
+		return err
+	}
 	content, err := yaml.Marshal(job)
 	if err != nil {
 		return err
@@ -228,42 +242,22 @@ func DeleteJobDetail(name string, pipelineDetailId int) error {
 }
 
 // CreateJobDetail exec pipeline job
-func CreateJobDetail(name string) (*model.JobDetail, error) {
+func CreateJobDetail(name string, id int) (*model.JobDetail, error) {
 	jobData, err := GetJobObject(name)
 	if err != nil {
 		return nil, err
 	}
 	var jobDetail model.JobDetail
-	var ids []int
 	jobDetailFileDir := getJobDetailFileDir(name)
 	err = createDirIfNotExist(jobDetailFileDir)
 	if err != nil {
-		logger.Error("create job detail file dir failed", err.Error())
+		logger.Error("create job detail file dir failed: ", err.Error())
 		return nil, err
 	}
-	// read file
-	files, err := os.ReadDir(jobDetailFileDir)
-	if err != nil {
-		logger.Error("read file failed", err.Error())
-		return nil, err
-	}
-	for _, file := range files {
-		index := strings.Index(file.Name(), ".")
-		id, err := strconv.Atoi(file.Name()[0:index])
-		if err != nil {
-			logger.Error("string to int failed", err.Error())
-			continue
-		}
-		ids = append(ids, id)
-	}
-	if len(ids) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(ids)))
-		jobDetail.Id = ids[0] + 1
-	} else {
-		jobDetail.Id = 1
-	}
+	jobDetail.Id = id
 	stageDetail, err := jobData.StageSort()
 	if err != nil {
+		logger.Error("create job detail failed: ", err.Error())
 		return nil, err
 	}
 	jobDetail.Job = *jobData
@@ -271,7 +265,6 @@ func CreateJobDetail(name string) (*model.JobDetail, error) {
 	jobDetail.StartTime = time.Now()
 	jobDetail.Stages = stageDetail
 	jobDetail.TriggerMode = consts.TRIGGER_MODE
-	// create and save job detail
 	return &jobDetail, SaveJobDetail(name, &jobDetail)
 }
 
@@ -509,4 +502,15 @@ func GetJobsDir() string {
 func WriteFileToJobsDir(fileName string, content []byte) error {
 	jobsDir := GetJobsDir()
 	return SaveFile(filepath.Join(jobsDir, fileName), content)
+}
+
+// MakeJobStop 使 job 停止
+func MakeJobStop(jobName string, jobDetailId int, errorString string) error {
+	jobDetail, err := GetJobDetail(jobName, jobDetailId)
+	if err != nil {
+		return err
+	}
+	jobDetail.Status = model.STATUS_STOP
+	jobDetail.Error = errorString
+	return SaveJobDetail(jobName, jobDetail)
 }

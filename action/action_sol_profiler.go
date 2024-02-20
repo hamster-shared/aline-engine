@@ -138,6 +138,7 @@ func (a *SolProfilerAction) Post() error {
 		logger.Errorf("regexp err %s", err)
 		return err
 	}
+	var total int
 	for _, info := range fileInfos {
 		path := path2.Join(a.path, info.Name())
 		var methodsPropertiesReportDetailsList []model.ContractMethodsPropertiesReportDetails
@@ -184,9 +185,10 @@ func (a *SolProfilerAction) Post() error {
 		}
 
 		details := model.NewContractCheckResultDetails(strings.Replace(info.Name(), consts.SuffixType, consts.SolFileSuffix, 1), 0, methodsPropertiesReportDetailsList)
+		total = total + details.Issue
 		checkResultDetailsList = append(checkResultDetailsList, details)
 	}
-	checkResult := model.NewContractCheckResult(consts.ContractMethodsPropertiesReport.Name, consts.CheckSuccess.Result, consts.ContractMethodsPropertiesReport.Tool, checkResultDetailsList)
+	checkResult := model.NewContractCheckResult(consts.ContractMethodsPropertiesReport.Name, consts.CheckSuccess.Result, consts.ContractMethodsPropertiesReport.Tool, checkResultDetailsList, total)
 	fmt.Printf("%+v", checkResult)
 	create, err := os.Create(path2.Join(a.path, consts.CheckResult))
 	fmt.Println()

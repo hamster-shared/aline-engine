@@ -65,8 +65,8 @@ func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("k8s containers format failed: %s", err.Error())
 		return nil, err
 	}
-	name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
-	_, err = utils.CreateDeployment(client, k.namespace, name, containers)
+	//name := fmt.Sprintf("%s-%s", k.namespace, k.projectName)
+	_, err = utils.CreateDeployment(client, k.namespace, k.projectName, containers)
 	if err != nil {
 		k.output.WriteLine(fmt.Sprintf("[ERROR]: create service failed, %s", err.Error()))
 		logger.Errorf("k8s create deployment failed: %s", err.Error())
@@ -79,7 +79,7 @@ func (k *K8sDeployAction) Hook() (*model.ActionResult, error) {
 		logger.Errorf("k8s service ports format failed: %s", err.Error())
 		return nil, err
 	}
-	err = utils.CreateService(client, k.namespace, name, servicePorts)
+	err = utils.CreateService(client, k.namespace, k.projectName, servicePorts)
 	if err != nil {
 		k.output.WriteLine(fmt.Sprintf("[ERROR]: create service failed, %s", err.Error()))
 		logger.Errorf("k8s create service failed: %s", err.Error())
