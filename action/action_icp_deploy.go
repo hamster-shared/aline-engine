@@ -58,7 +58,6 @@ func (a *ICPDeployAction) Pre() error {
 	workdir := a.ac.GetWorkdir()
 
 	cacheDir := path.Join(workdir, ".dfx")
-	//fmt.Println(path)
 
 	homeDir, _ := os.UserHomeDir()
 	toCacheDir := path.Join(homeDir, "pipelines/jobs", a.ac.GetJobName(), ".dfx")
@@ -73,23 +72,22 @@ func (a *ICPDeployAction) Pre() error {
 	if icNetwork == "" {
 		icNetwork = "local"
 	}
-	dfxBin := "/usr/local/bin/dfx"
 
-	locker, err := utils.Lock()
-	if err != nil {
-		return err
-	}
-
-	defer utils.Unlock(locker)
-
-	cmd := exec.Command(dfxBin, "identity", "use", a.userId, "-qq")
-	logger.Info("execute: ", strings.Join(cmd.Args, " "))
-	cmd.Dir = workdir
-	output, err := cmd.CombinedOutput()
-	logger.Info(string(output))
-	if err != nil {
-		return err
-	}
+	//locker, err := utils.Lock()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//defer utils.Unlock(locker)
+	//
+	//cmd := exec.Command(DFX_BIN, "identity", "use", a.userId, "-qq")
+	//logger.Info("execute: ", strings.Join(cmd.Args, " "))
+	//cmd.Dir = workdir
+	//output, err := cmd.CombinedOutput()
+	//logger.Info(string(output))
+	//if err != nil {
+	//	return err
+	//}
 
 	var dfxJson DFXJson
 	if err := json.Unmarshal([]byte(a.dfxJson), &dfxJson); err != nil {
@@ -107,7 +105,7 @@ func (a *ICPDeployAction) Pre() error {
 		}
 
 		for canisterId, _ := range dfxJson.Canisters {
-			cmd := exec.Command(dfxBin, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000")
+			cmd := exec.Command(DFX_BIN, "canister", "create", canisterId, "--network", icNetwork, "--with-cycles", "300000000000", "--identity", a.userId)
 			logger.Info("execute: ", strings.Join(cmd.Args, " "))
 			cmd.Dir = workdir
 			logger.Infof("execute create canister command: %s", cmd)
@@ -126,7 +124,7 @@ func (a *ICPDeployAction) Pre() error {
 	}
 
 	logger.Info("write dfx.json: ", a.dfxJson)
-	err = os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
+	err := os.WriteFile(path.Join(workdir, "dfx.json"), []byte(a.dfxJson), 0644)
 	if err != nil {
 		logger.Error("write dfx.json error:", err)
 		return err
@@ -154,31 +152,30 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 	if icNetwork == "" {
 		icNetwork = "local"
 	}
-	dfxBin := "/usr/local/bin/dfx"
 
-	locker, err := utils.Lock()
-	if err != nil {
-		return nil, err
-	}
-
-	defer utils.Unlock(locker)
-
-	cmd := exec.Command(dfxBin, "identity", "use", a.userId)
-	logger.Info("execute: ", strings.Join(cmd.Args, " "))
-	cmd.Dir = workdir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-	logger.Info(string(output))
+	//locker, err := utils.Lock()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//defer utils.Unlock(locker)
+	//
+	//cmd := exec.Command(DFX_BIN, "identity", "use", a.userId)
+	//logger.Info("execute: ", strings.Join(cmd.Args, " "))
+	//cmd.Dir = workdir
+	//output, err := cmd.CombinedOutput()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//logger.Info(string(output))
 
 	actionResult := &model.ActionResult{}
 	if a.deployCmd {
-		cmd = exec.Command(dfxBin, "deploy", "--network", icNetwork, "--with-cycles", "300000000000")
+		cmd := exec.Command(DFX_BIN, "deploy", "--network", icNetwork, "--with-cycles", "300000000000", "--identity", a.userId)
 		logger.Info("execute: ", strings.Join(cmd.Args, " "))
 		cmd.Dir = workdir
 		logger.Infof("execute deploy canister command: %s", cmd)
-		output, err = cmd.CombinedOutput()
+		output, err := cmd.CombinedOutput()
 		if err != nil {
 			logger.Error("execute deploy fail:", err)
 			a.ac.WriteLine(string(output))
@@ -191,7 +188,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		urls := analyzeURL(string(output))
 
 		for key, value := range urls {
-			cmd = exec.Command(dfxBin, "canister", "id", key, "--network", icNetwork, "-qq")
+			cmd = exec.Command(DFX_BIN, "canister", "id", key, "--network", icNetwork, "-qq", "--identity", a.userId)
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()
 			logger.Info(string(output))
@@ -218,9 +215,9 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 		}
 
 		for canisterName, _ := range dfxJson.Canisters {
-			cmd = exec.Command(dfxBin, "canister", "id", canisterName, "--network", icNetwork, "-qq")
+			cmd := exec.Command(DFX_BIN, "canister", "id", canisterName, "--network", icNetwork, "-qq", "--identity", a.userId)
 			cmd.Dir = workdir
-			output, err = cmd.CombinedOutput()
+			output, err := cmd.CombinedOutput()
 			logger.Info(string(output))
 
 			canisterId := strings.TrimSpace(string(output))
@@ -229,7 +226,7 @@ func (a *ICPDeployAction) Hook() (*model.ActionResult, error) {
 			}
 
 			fmt.Println("canisterName : ", canisterName)
-			cmd := exec.Command(dfxBin, "canister", "install", canisterName, "--yes", "--mode=reinstall", "--network", icNetwork)
+			cmd = exec.Command(DFX_BIN, "canister", "install", canisterName, "--yes", "--mode=reinstall", "--network", icNetwork, "--identity", a.userId)
 			logger.Info("execute: ", strings.Join(cmd.Args, " "))
 			cmd.Dir = workdir
 			output, err = cmd.CombinedOutput()

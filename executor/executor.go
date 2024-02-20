@@ -192,7 +192,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		stageWapper.StartTime = time.Now()
 		jobWrapper.Stages[index] = stageWapper
 		jobWrapper.Output.NewStage(stageWapper.Name)
-		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 
 		for index, step := range stageWapper.Stage.Steps {
 			var ah action.ActionHandler
@@ -205,7 +205,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			}
 			stageWapper.Stage.Steps[index].StartTime = time.Now()
 			stageWapper.Stage.Steps[index].Status = model.STATUS_RUNNING
-			jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			actionContext := aline_context.NewActionContext(step, ctx, jobWrapper.Output)
 			// 如果 step 超时，则调用 cancel，在这里存储该 job 的计时器
 			// 每次新 step 时，都会重新设置该计时器，所以不需要存储到底是哪个 step
@@ -244,12 +244,14 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 				ah = action.NewCheckAggregationAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "deploy-ink-contract" {
 				ah = action.NewInkAction(step, ctx, jobWrapper.Output)
-			} else if step.Uses == "frontend-check" {
+			} else if step.Uses == "frontend- check" {
 				ah = action.NewEslintAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "eth-gas-reporter" {
 				ah = action.NewEthGasReporterAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "aptos-check" {
 				ah = action.NewMoveProverAction(step, ctx, jobWrapper.Output)
+			} else if step.Uses == "sui-check" {
+				ah = action.NewMoveLint(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "workdir" {
 				ah = action.NewWorkdirAction(step, ctx, jobWrapper.Output)
 			} else if step.Uses == "openai" {
@@ -274,10 +276,11 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 			} else {
 				stageWapper.Stage.Steps[index].Status = model.STATUS_SUCCESS
 			}
-			err := jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+			_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 			if err != nil {
-				logger.Error("SaveJobDetail error: ", err)
+				break
 			}
+
 		}
 
 		if err != nil {
@@ -288,7 +291,7 @@ func (e *Executor) Execute(id int, job *model.Job) error {
 		dataTime := time.Since(stageWapper.StartTime)
 		stageWapper.Duration = dataTime.Milliseconds()
 		jobWrapper.Stages[index] = stageWapper
-		jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
+		_ = jober.SaveJobDetail(jobWrapper.Name, jobWrapper)
 		logger.Info("}")
 		if err != nil {
 			cancel()
